@@ -7,4 +7,5 @@ export default [
     route("log", "routes/log.tsx"),
     route("leaderboard", "routes/leaderboard.tsx"),
     route("logout", "routes/logout.tsx"),
+    route("create-post", "routes/create-post.tsx"),
 ] satisfies RouteConfig;

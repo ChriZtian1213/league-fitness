@@ -102,3 +102,19 @@ export async function addFriend(userId: string, friendId: string): Promise<void>
         { $addToSet: { friendIds: userObjectId } }
     );
 }
+
+export async function followUser(userId: string, targetUserId: string): Promise<void> {
+    const db = await connectDB();
+    await db.collection("users").updateOne(
+        { _id: new ObjectId(targetUserId) },
+        { $addToSet: { followerIds: new ObjectId(userId) } }
+    );
+}
+
+export async function unfollowUser(userId: string, targetUserId: string): Promise<void> {
+    const db = await connectDB();
+    await db.collection("users").updateOne(
+        { _id: new ObjectId(targetUserId) },
+        { $pull: { followerIds: new ObjectId(userId) } }
+    );
+}

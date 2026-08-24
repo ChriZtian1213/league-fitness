@@ -21,10 +21,10 @@ export function NavBar(){
                 <span>Add Log</span>
             </NavLink>
 
-            <button className="flex flex-1 flex-col items-center border-r border-gray-600 text-gray-400">
+            <NavLink to="/create-post" className={linkClass}>
                 <span>✚</span>
                 <span>Create Post</span>
-            </button>
+            </NavLink>
 
             <button className="flex flex-1 flex-col items-center border-r border-gray-600 text-gray-400">
                 <span>🔍</span>
