@@ -3,9 +3,7 @@ import type {Step, Category, Muscle} from "../../types/workout.ts";
 
 export function useWorkoutFlow(){
     const [step, setStep] = useState<Step>("category")
-
     const [category, setCategory] = useState<Category | null>(null)
-
     const [muscle, setMuscle] = useState<Muscle | null>(null)
 
     function next(categoryOverride?: Category){
@@ -48,6 +46,6 @@ export function useWorkoutFlow(){
 
     return {
         step, category, muscle, setCategory,
-        setMuscle, next, back
+        setMuscle, next, back, setStep
     }
 }

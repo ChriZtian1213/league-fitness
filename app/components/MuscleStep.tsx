@@ -12,20 +12,28 @@ export function MuscleStep({category, onSelect, onBack}: Props)  {
             <p>Muscle Step goes here!</p>
             {category === "upper" && (
                 <>
-                    <div>
-                        <button onClick={() => onSelect("chest")}>
+                    <div className={"flex gap-2"}>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("chest")}>
                             Chest
                         </button>
 
-                        <button onClick={() => onSelect("triceps")}>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("triceps")}>
                             Triceps
                         </button>
 
-                        <button onClick={() => onSelect("shoulders")}>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("shoulders")}>
                             Shoulders
                         </button>
 
-                        <button onClick={() => onSelect("biceps")}>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("biceps")}>
                             Biceps
                         </button>
                     </div>
@@ -35,15 +43,35 @@ export function MuscleStep({category, onSelect, onBack}: Props)  {
             {category === "lower" && (
                 <>
                     <div>
-                        <button onClick={() => onSelect("glutes")}>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("glutes")}>
                             Glutes
                         </button>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("hamstrings")}>
+                            Hamstrings
+                        </button>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("quads")}>
+                            Quads
+                        </button>
+                        <button
+                            className={"size-24 border"}
+                            onClick={() => onSelect("calves")}>
+                            Calves
+                        </button>
+
                     </div>
                 </>
             )}
 
-            <button onClick={onBack}>
-                Return
+            <button
+                className={"mt-4 size-16 border"}
+                onClick={onBack}>
+                🔙 Return
             </button>
         </div>
     )

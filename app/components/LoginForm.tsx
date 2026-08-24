@@ -1,78 +1,49 @@
-import {useState} from "react"
-import type { User } from "../types/user"
+import { Form } from "react-router";
 
 type Props = {
-    onLogin: (user: User) => void
-}
+    error?: string;
+};
 
-export function LoginForm({ onLogin }: Props)  {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-
-    function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
-        e.preventDefault();
-
-        const savedAccount = localStorage.getItem("account");
-
-        if (!savedAccount) {
-            setError("No account found!");
-            return;
-        }
-
-        const parsedUser: User = JSON.parse(savedAccount);
-
-        const validEmail = parsedUser.email === email;
-
-        const validPassword = parsedUser.password === password;
-
-        console.log("Saved account:", parsedUser)
-        console.log("Typed email:", email)
-        console.log("Typed password:", password)
-
-        console.log(
-            "Email matches:",
-            parsedUser.email === email
-        )
-
-        console.log(
-            "Password matches:",
-            parsedUser.password === password
-        )
-
-        if (validEmail && validPassword) {
-            setError("");
-            onLogin(parsedUser);
-        } else {
-            setError("Incorrect email or password");
-        }
-
-    }
-
+export function LoginForm({ error }: Props) {
     return (
-        <>
-            <form onSubmit={handleSubmit}>
-                <h2>Log back in</h2>
-                <div style={{}}>
-                    <label>Email</label>
-                    <input
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        type="email"
-                    />
-                </div>
-                <div style={{}}>
-                    <label >Password</label>
-                    <input
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        type="password"
-                    />
-                </div>
+        <Form
+            method="post"
+            className="flex flex-col gap-4 min-h-100"
+        >
+            <input type="hidden" name="intent" value="login" />
 
-                <button type="submit">Sign In</button>
+            <p className="flex justify-center pb-2">Lets get you signed in!</p>
+
+            <div className="flex flex-col gap-1">
+                <label>Email:</label>
+                <input
+                    className="border-b text-neutral-200"
+                    name="email"
+                    type="email"
+                    required
+                />
+            </div>
+            <div className="flex flex-col gap-1">
+                <label>Password:</label>
+                <input
+                    className="border-b text-neutral-200"
+                    name="password"
+                    type="password"
+                    required
+                />
+            </div>
+
+            <div className="flex justify-center mt-4 text-green-600">
+                <button
+                    className="border rounded-md px-4 py-2 font-bold"
+                    type="submit"
+                >
+                    Sign In
+                </button>
+            </div>
+            <div className="underline flex flex-col items-center justify-center text-red-600">
                 {error && <p>{error}</p>}
-            </form>
-        </>
-    )
+            </div>
+        </Form>
+    );
 }

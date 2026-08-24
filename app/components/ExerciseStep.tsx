@@ -10,9 +10,10 @@ type Props = {
     onSelectExercise: (exercise: Exercise) => void
     onCreateExercise: (name: string) => void
     onBack: () => void
+    onHome?: ()=> void
 }
 
-export function ExerciseStep({ category, muscle, exercises, onSelectExercise, onCreateExercise, onBack }: Props) {
+export function ExerciseStep({ category, muscle, exercises, onSelectExercise, onCreateExercise, onBack, onHome}: Props) {
     const [query, setQuery] = useState("");
 
     const filteredExercises = exercises.filter((exercise) => {
@@ -32,8 +33,8 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, on
     const noResults = query.length > 0 && filteredExercises.length === 0
 
     return (
-        <div>
-            <h2>Select an Exercise</h2>
+        <div className={"flex flex-col gap-2"}>
+            <h2>Exercise Step </h2>
 
             <input
                 type="text"
@@ -42,9 +43,10 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, on
                 onChange={(e) => setQuery(e.target.value)}
             />
 
-            <div>
+            <div className="flex flex-row gap-2">
                 {filteredExercises.map((exercise) => (
                     <button
+                        className={"size-24 border"}
                         key={exercise.id}
                         onClick={() =>
                             onSelectExercise(exercise)
@@ -57,17 +59,31 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, on
 
             {noResults && (
                 <button
+                    className={"size-24 border"}
                     onClick={() =>
                         onCreateExercise(query)
                     }
                 >
-                    Create "{query}"
+                    <p>➕</p>"{query}"
                 </button>
             )}
 
-            <button onClick={onBack}>
-                Return
-            </button>
+            <div className="flex flex-row">
+                <button
+                    className={"mt-4 size-16 border"}
+                    onClick={onBack}>
+                    🔙 Return
+                </button>
+                {onHome && (
+                    <button
+                        className="mt-4 size-16 border"
+                        onClick={onHome}
+                    >
+                        Home
+                    </button>
+                )}
+
+            </div>
         </div>
     )
 }

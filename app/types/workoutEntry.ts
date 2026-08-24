@@ -1,7 +1,11 @@
 export type WorkoutEntry = {
     id: string
     exercise: string
-    weight: number
-    reps: number
     createdAt: Date
+
+    weight?: number
+    reps?: number
+
+    distance?: number
+    time?: string
 }

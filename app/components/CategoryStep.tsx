@@ -9,10 +9,33 @@ export function CategoryStep({onSelect}: Props) {
 
     return (
         <div>
-            <p>Category Step goes here!</p>
-            <button onClick={() => onSelect("upper")}>Upper Body</button>
-            <button onClick={() => onSelect("lower")}>Lower Body</button>
-            <button onClick={() => onSelect("cardio")}>Cardio</button>
+            <div className="flex justify-center p-2">Select Category Worked</div>
+
+            <div className={"flex items-center gap-2"}>
+                <button
+                    className={"size-24 border flex flex-col items-center justify-center"}
+                    onClick={() => onSelect("upper")}
+                >
+                    <span>Upper Body</span>
+                    <span>💪</span>
+                </button>
+
+                <button
+                    className={"size-24 border flex flex-col items-center justify-center"}
+                    onClick={() => onSelect("lower")}
+                >
+                    <span>Lower Body</span>
+                    <span>🦵</span>
+                </button>
+
+                <button
+                    className={"size-24 border flex flex-col items-center justify-center"}
+                    onClick={() => onSelect("cardio")}
+                >
+                    <span>Cardio</span>
+                    <span>🏃</span>
+                </button>
+            </div>
         </div>
     )
 }
