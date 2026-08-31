@@ -164,3 +164,39 @@ export async function toggleRepost(userId: string, postId: string) {
             : { $addToSet: { repostedBy: userObjectId } }
     );
 }
+
+export async function deleteComment(
+    requestUserId: string,
+    postId: string,
+    commentId: string
+){
+    const db = await connectDB();
+    const postObjectId = new ObjectId(postId);
+    const requestingUserObjectId = new ObjectId(requestUserId);
+
+    const post = await db.collection("posts").findOne({_id: postObjectId}, {projection: { userId: 1, comments: 1}});
+    if (!post) throw new Error("Post not found");
+
+    const comment = (post.comments ?? []).find((c: any) => c.id === commentId);
+    if (!comment) throw new Error("Comment not found");
+
+    const isPostOwner = post.userId.equals(requestingUserObjectId);
+    const isCommentOwner = comment.userId.equals(requestingUserObjectId);
+
+    if (!isPostOwner && !isCommentOwner) {
+        throw new Error("Not authorized to delete this comment");
+    }
+
+    // Cascade: also remove any replies pointing at this comment, so we
+    // never leave orphaned replies with a dangling parentCommentId.
+    const idsToRemove = new Set([commentId]);
+    for (const c of post.comments ?? []) {
+        if (c.parentCommentId === commentId) idsToRemove.add(c.id);
+    }
+
+    await db.collection("posts").updateOne(
+        { _id: postObjectId },
+        { $pull: { comments: { id: { $in: [...idsToRemove] } } } }
+    );
+
+}

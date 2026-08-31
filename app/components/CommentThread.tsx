@@ -2,7 +2,7 @@ import {useState} from "react";
 import { Form } from "react-router";
 import type {PostEntry} from "~/types/post";
 
-export default function CommentThread({post}: {post: PostEntry}) {
+export default function CommentThread({post, currentUserId}: {post: PostEntry; currentUserId: string}) {
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
     const topLevel = post.comments.filter((c) => c.parentCommentId === null);
@@ -10,6 +10,8 @@ export default function CommentThread({post}: {post: PostEntry}) {
         post.comments.filter((c) => c.parentCommentId === commentId);
 
     function renderComment(comment: PostEntry["comments"][number], isReply: boolean) {
+        const canDelete = post.isOwnPost || comment.userId === currentUserId;
+
         return (
             <div key={comment.id} className={isReply ? "ml-6 mt-1" : "mt-1"}>
                 <div className="flex gap-2 items-center">
@@ -28,6 +30,16 @@ export default function CommentThread({post}: {post: PostEntry}) {
                     <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}>
                         Reply
                     </button>
+                    {canDelete && (
+                        <Form method="post">
+                            <input type="hidden" name="intent" value="deleteComment" />
+                            <input type="hidden" name="postId" value={post.id} />
+                            <input type="hidden" name="commentId" value={comment.id} />
+                            <button type="submit" className="text-red-400">
+                                Delete
+                            </button>
+                        </Form>
+                    )}
                 </div>
 
                 {replyingTo === comment.id && (

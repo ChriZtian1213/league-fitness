@@ -1,10 +1,9 @@
-import {useState} from 'react';
 import type {Route} from "./+types/home"
 import {Form, Link, useLoaderData} from "react-router"
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser} from "~/server/user.server";
-import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike} from "~/server/post.server";
+import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment} from "~/server/post.server";
 import CommentThread from "~/components/CommentThread";
 
 export async function loader({request}: Route.LoaderArgs) {
@@ -49,6 +48,20 @@ export async function action({request}: Route.ActionArgs) {
         const commentId = formData.get("commentId");
         if (typeof postId === "string" && typeof commentId === "string") {
             await toggleCommentLike(userId, postId, commentId);
+        }
+        return {ok: true};
+    }
+
+    if (intent === "deleteComment"){
+        const postId = formData.get("postId");
+        const commentId = formData.get("commentId");
+        if (typeof postId === "string" && typeof commentId === "string") {
+            try {
+                await deleteComment(userId, postId, commentId);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "Could not delete comment";
+                return {error: message};
+            }
         }
         return {ok: true};
     }
@@ -153,7 +166,7 @@ export default function Home() {
                         </div>
                     )}
 
-                    <CommentThread post={post} />
+                    {post.comments.length > 0 && <CommentThread post={post} currentUserId={user?.id ?? ""} /> }
 
                     <Form method="post" className="flex gap-2 w-full max-w-md">
                         <input type="hidden" name="intent" value="comment" />
