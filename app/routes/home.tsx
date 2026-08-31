@@ -3,7 +3,7 @@ import {Form, Link, useLoaderData} from "react-router"
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser} from "~/server/user.server";
-import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment} from "~/server/post.server";
+import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost} from "~/server/post.server";
 import CommentThread from "~/components/CommentThread";
 
 export async function loader({request}: Route.LoaderArgs) {
@@ -52,6 +52,26 @@ export async function action({request}: Route.ActionArgs) {
         return {ok: true};
     }
 
+    if (intent === "editComment") {
+        const postId = formData.get("postId");
+        const commentId = formData.get("commentId");
+        const text = formData.get("text");
+        if (
+            typeof postId === "string" &&
+            typeof commentId === "string" &&
+            typeof text === "string" &&
+            text.trim()
+        ) {
+            try {
+                await editComment(userId, postId, commentId, text.trim());
+            } catch (err){
+                const message = err instanceof Error ? err.message : "Could not edit comment";
+                return {error: message};
+            }
+        }
+        return {ok: true};
+    }
+
     if (intent === "deleteComment"){
         const postId = formData.get("postId");
         const commentId = formData.get("commentId");
@@ -61,6 +81,18 @@ export async function action({request}: Route.ActionArgs) {
             } catch (error) {
                 const message = error instanceof Error ? error.message : "Could not delete comment";
                 return {error: message};
+            }
+        }
+        return {ok: true};
+    }
+
+    if (intent === "deletePost") {
+        const postId = formData.get("postId");
+        if (typeof postId === "string"){
+            try {
+                await deletePost(userId, postId);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "Could not delete post";
             }
         }
         return {ok: true};
@@ -132,6 +164,15 @@ export default function Home() {
                                 <input type="hidden" name="targetUserId" value={post.userId} />
                                 <button type="submit" className={post.isFollowing ? "text-neutral-400" : "text-blue-400"}>
                                     {post.isFollowing ? "Following" : "Follow"}
+                                </button>
+                            </Form>
+                        )}
+                        {post.isOwnPost && (
+                            <Form method="post">
+                                <input type="hidden" name="intent" value="deletePost" />
+                                <input type="hidden" name="postId" value={post.id} />
+                                <button type="submit" className="text-red-400">
+                                    Delete
                                 </button>
                             </Form>
                         )}

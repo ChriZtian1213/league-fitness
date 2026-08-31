@@ -7,6 +7,8 @@ export interface Comment {
     likeCount: number;
     likedByMe: boolean;
     parentCommentId: string | null;
+    edited: boolean;
+    editedAt: Date | null;
 }
 
 export interface PostEntry {

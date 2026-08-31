@@ -1,5 +1,6 @@
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
+import * as string_decoder from "node:string_decoder";
 
 export interface CreatePostInput {
     imageData: string;
@@ -62,6 +63,8 @@ export async function getFeed(viewerUserId: string) {
             likeCount: (c.likedBy ?? []).length,
             likedByMe: (c.likedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
             parentCommentId: c.parentCommentId ?? null,
+            edited: c.edited ?? false,
+            editedAt: c.editedAt ?? null,
         })),
         repostCount: (post.repostedBy ?? []).length,
         isFollowing: (post.author.followerIds ?? []).some((id: ObjectId) =>
@@ -199,4 +202,50 @@ export async function deleteComment(
         { $pull: { comments: { id: { $in: [...idsToRemove] } } } }
     );
 
+}
+
+export async function editComment(
+    userId: string,
+    postId: string,
+    commentId: string,
+    newText: string
+) {
+    const db = await connectDB();
+    const postObjectId = new ObjectId(postId);
+    const userObjectId = new ObjectId(userId);
+
+    const post = await db.collection("posts").findOne({_id: postObjectId}, {projection: {comments: 1}});
+    if (!post) throw new Error("Post not found");
+
+    const comment = (post.comments ?? []).find((c: any) => c.id === commentId);
+    if (!comment) throw new Error("Comment not found");
+
+    if (!comment.userId.equals(userId)) throw new Error("Not authorized to edit this comment");
+
+    await db.collection("posts").updateOne(
+        { _id: postObjectId, "comments.id": commentId },
+        {
+            $set: {
+                "comments.$.text": newText,
+                "comments.$.edited": true,
+                "comments.$.editdAt": new Date(),
+            },
+        }
+    );
+}
+
+export async function deletePost(
+    userId: string,
+    postId: string
+) {
+    const db = await connectDB();
+
+    const result = await db.collection("posts").deleteOne({
+        _id: new ObjectId(postId),
+        userId: new ObjectId(userId),
+    });
+
+    if (result.deletedCount === 0) {
+        throw new Error("Post not found or not authorized");
+    }
 }

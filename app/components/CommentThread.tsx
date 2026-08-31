@@ -4,6 +4,7 @@ import type {PostEntry} from "~/types/post";
 
 export default function CommentThread({post, currentUserId}: {post: PostEntry; currentUserId: string}) {
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
     const topLevel = post.comments.filter((c) => c.parentCommentId === null);
     const repliesFor = (commentId: string) =>
@@ -11,13 +12,41 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
 
     function renderComment(comment: PostEntry["comments"][number], isReply: boolean) {
         const canDelete = post.isOwnPost || comment.userId === currentUserId;
+        const canEdit = comment.userId === currentUserId;
+        const isEditing = editingCommentId === comment.id;
 
         return (
             <div key={comment.id} className={isReply ? "ml-6 mt-1" : "mt-1"}>
-                <div className="flex gap-2 items-center">
-                    <p className="font-bold">{comment.displayName}</p>
-                    <p>{comment.text}</p>
-                </div>
+                {isEditing ? (
+                    <Form
+                        method="post"
+                        className="flex gap-2"
+                        onSubmit={() => setEditingCommentId(null)}
+                    >
+                        <input type="hidden" name="intent" value="editComment" />
+                        <input type="hidden" name="postId" value={post.id} />
+                        <input type="hidden" name="commentId" value={comment.id} />
+                        <input
+                            name="text"
+                            defaultValue={comment.text}
+                            className="flex-1 border-b bg-transparent text-neutral-200 text-sm"
+                            autoFocus
+                        />
+                        <button type="submit">Save</button>
+                        <button type="button" onClick={() => setEditingCommentId(null)}>
+                            Cancel
+                        </button>
+                    </Form>
+                ) : (
+                    <div className="flex gap-2 items-center">
+                        <p className="font-bold">{comment.displayName}</p>
+                        <p>{comment.text}</p>
+                        {comment.edited && (
+                            <span className="text-xs text-neutral-500">(edited)</span>
+                        )}
+                    </div>
+                )}
+
                 <div className="flex gap-3 text-sm text-neutral-400">
                     <Form method="post">
                         <input type="hidden" name="intent" value="likeComment" />
@@ -30,6 +59,9 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
                     <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}>
                         Reply
                     </button>
+                    {canEdit && !isEditing && (
+                        <button onClick={() => setEditingCommentId(comment.id)}>Edit</button>
+                    )}
                     {canDelete && (
                         <Form method="post">
                             <input type="hidden" name="intent" value="deleteComment" />
