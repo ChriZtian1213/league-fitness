@@ -14,7 +14,6 @@ export function CategoryStep({onSelect}: Props) {
             <div className={"flex items-center gap-2"}>
                 <button
                     className={"size-24 border flex flex-col items-center justify-center"}
-                    className={"size-24 border flex flex-col items-center justify-center"}
                     onClick={() => onSelect("upper")}
                 >
                     <span>Upper Body</span>

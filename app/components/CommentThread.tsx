@@ -36,6 +36,7 @@ export default function CommentThread({post}: {post: PostEntry}) {
                         <input type="hidden" name="postId" value={post.id} />
                         <input type="hidden" name="parentCommentId" value={comment.id} />
                         <input
+                            key={`reply-input-${comment.id}-${repliesFor(comment.id).length}`}
                             name="text"
                             placeholder={`Reply to ${comment.displayName}...`}
                             className="flex-1 border-b bg-transparent text-neutral-200 text-sm"

@@ -159,6 +159,7 @@ export default function Home() {
                         <input type="hidden" name="intent" value="comment" />
                         <input type="hidden" name="postId" value={post.id} />
                         <input
+                            key={`comment-input-${post.id}-${post.comments.length}`}
                             name="text"
                             placeholder="Add a comment..."
                             className="flex-1 border-b bg-transparent text-neutral-200"
@@ -172,5 +173,3 @@ export default function Home() {
         </div>
     );
 }
-
-// TODO: Replace comment block in Home component.
