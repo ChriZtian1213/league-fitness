@@ -118,3 +118,24 @@ export async function unfollowUser(userId: string, targetUserId: string): Promis
         { $pull: { followerIds: new ObjectId(userId) } }
     );
 }
+
+export async function getFollowerCount(userId: string): Promise<number> {
+    const db = await connectDB();
+    const user = await db
+        .collection("users")
+        .findOne({ _id: new ObjectId(userId) }, { projection: { followerIds: 1 } });
+    return (user?.followerIds ?? []).length;
+}
+
+export async function getFollowingCount(userId: string): Promise<number> {
+    const db = await connectDB();
+    return db.collection("users").countDocuments({ followerIds: new ObjectId(userId) });
+}
+
+export async function isFollowing(viewerId: string, targetUserId: string): Promise<boolean> {
+    const db = await connectDB();
+    const target = await db
+        .collection("users")
+        .findOne({ _id: new ObjectId(targetUserId) }, { projection: { followerIds: 1 } });
+    return (target?.followerIds ?? []).some((id: ObjectId) => id.equals(new ObjectId(viewerId)));
+}

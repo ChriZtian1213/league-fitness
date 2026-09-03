@@ -156,7 +156,9 @@ export default function Home() {
             {posts.map((post) => (
                 <div key={post.id} className="flex flex-col items-center gap-3 border-t-2 border-black p-4">
                     <div className="flex flex-row gap-4 items-center w-full max-w-md justify-center">
-                        <p className="font-bold">{post.displayName}</p>
+                        <Link to={`/profile/${post.userId}`} className="font-bold">
+                            {post.displayName}
+                        </Link>
                         <p>⚆ {timeAgo(post.createdAt)}</p>
                         {!post.isOwnPost && (
                             <Form method="post">
