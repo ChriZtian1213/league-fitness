@@ -4,7 +4,7 @@ import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser} from "~/server/user.server";
 import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost} from "~/server/post.server";
-import CommentThread from "~/components/CommentThread";
+import {CommentThread} from "~/components/CommentThread";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -209,7 +209,7 @@ export default function Home() {
                         </div>
                     )}
 
-                    {post.comments.length > 0 && <CommentThread post={post} currentUserId={user?.id ?? ""} /> }
+                    {post.comments.length > 0 && <CommentThread post={post.id} comments={post.comments} isOwnPost={post.isOwnPost} currentUserId={user?.id ?? ""} /> }
 
                     <Form method="post" className="flex gap-2 w-full max-w-md">
                         <input type="hidden" name="intent" value="comment" />

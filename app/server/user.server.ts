@@ -2,6 +2,35 @@ import { connectDB } from "./db.server";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 
+export interface UserSearchResult {
+    id: string;
+    displayName: string;
+}
+
+// Case-insensitive partial match on displayName. Escapes regex special
+// characters so a search containing them (e.g. "a+b") doesn't throw or
+// behave unexpectedly.
+export async function searchUsers(query: string, limit = 20): Promise<UserSearchResult[]> {
+    const db = await connectDB();
+
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const users = await db
+        .collection("users")
+        .find({ displayName: { $regex: escaped, $options: "i" } })
+        .limit(limit)
+        .project({ displayName: 1 })
+        .toArray();
+
+    return users.map((u: any) => ({
+        id: u._id.toString(),
+        displayName: u.displayName,
+    }));
+}
+
 export interface CreateUserInput {
     displayName: string;
     email: string;

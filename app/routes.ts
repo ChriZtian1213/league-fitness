@@ -10,4 +10,5 @@ export default [
     route("logout", "routes/logout.tsx"),
     route("create-post", "routes/create-post.tsx"),
     route("post/:postId", "routes/post.tsx"),
+    route("search", "routes/search.tsx"),
 ] satisfies RouteConfig;

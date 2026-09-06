@@ -1,17 +1,37 @@
 import {useState} from "react";
-import { Form } from "react-router";
-import type {PostEntry} from "~/types/post";
+import {Form} from "react-router";
+import {Link} from "react-router";
 
-export default function CommentThread({post, currentUserId}: {post: PostEntry; currentUserId: string}) {
+export interface CommentData {
+    id: string;
+    userId: string;
+    displayName: string;
+    text: string;
+    createdAt: Date;
+    likeCount: number;
+    likedByMe: boolean;
+    parentCommentId: string | null;
+    edited: boolean;
+    editedAt: Date | null;
+}
+
+type Props = {
+    postId: string;
+    comments: CommentData[];
+    isOwnPost: boolean;
+    currentUserId: string;
+};
+
+export function CommentThread({postId, comments, isOwnPost, currentUserId}: Props) {
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
-    const topLevel = post.comments.filter((c) => c.parentCommentId === null);
+    const topLevel = comments.filter((c) => c.parentCommentId === null);
     const repliesFor = (commentId: string) =>
-        post.comments.filter((c) => c.parentCommentId === commentId);
+        comments.filter((c) => c.parentCommentId === commentId);
 
-    function renderComment(comment: PostEntry["comments"][number], isReply: boolean) {
-        const canDelete = post.isOwnPost || comment.userId === currentUserId;
+    function renderComment(comment: CommentData, isReply: boolean) {
+        const canDelete = isOwnPost || comment.userId === currentUserId;
         const canEdit = comment.userId === currentUserId;
         const isEditing = editingCommentId === comment.id;
 
@@ -24,7 +44,7 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
                         onSubmit={() => setEditingCommentId(null)}
                     >
                         <input type="hidden" name="intent" value="editComment" />
-                        <input type="hidden" name="postId" value={post.id} />
+                        <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="commentId" value={comment.id} />
                         <input
                             name="text"
@@ -39,7 +59,9 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
                     </Form>
                 ) : (
                     <div className="flex gap-2 items-center">
-                        <p className="font-bold">{comment.displayName}</p>
+                        <Link to={`/profile/${comment.userId}`} className="font-bold hover:underline">
+                            {comment.displayName}
+                        </Link>
                         <p>{comment.text}</p>
                         {comment.edited && (
                             <span className="text-xs text-neutral-500">(edited)</span>
@@ -50,7 +72,7 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
                 <div className="flex gap-3 text-sm text-neutral-400">
                     <Form method="post">
                         <input type="hidden" name="intent" value="likeComment" />
-                        <input type="hidden" name="postId" value={post.id} />
+                        <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="commentId" value={comment.id} />
                         <button type="submit">
                             {comment.likedByMe ? "🔥" : "🤍"} {comment.likeCount}
@@ -65,7 +87,7 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
                     {canDelete && (
                         <Form method="post">
                             <input type="hidden" name="intent" value="deleteComment" />
-                            <input type="hidden" name="postId" value={post.id} />
+                            <input type="hidden" name="postId" value={postId} />
                             <input type="hidden" name="commentId" value={comment.id} />
                             <button type="submit" className="text-red-400">
                                 Delete
@@ -77,7 +99,7 @@ export default function CommentThread({post, currentUserId}: {post: PostEntry; c
                 {replyingTo === comment.id && (
                     <Form method="post" className="flex gap-2 mt-1">
                         <input type="hidden" name="intent" value="comment" />
-                        <input type="hidden" name="postId" value={post.id} />
+                        <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="parentCommentId" value={comment.id} />
                         <input
                             key={`reply-input-${comment.id}-${repliesFor(comment.id).length}`}

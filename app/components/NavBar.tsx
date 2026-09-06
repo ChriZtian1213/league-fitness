@@ -26,10 +26,10 @@ export function NavBar(){
                 <span>Create Post</span>
             </NavLink>
 
-            <button className="flex flex-1 flex-col items-center border-r border-gray-600 text-gray-400">
+            <NavLink to="/search" className={linkClass}>
                 <span>🔍</span>
                 <span>Search</span>
-            </button>
+            </NavLink>
 
             <NavLink to="/leaderboard" className={linkClass}>
                 <span>🏆</span>

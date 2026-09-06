@@ -2,8 +2,9 @@ import type {Route} from "./+types/post";
 import {Form, useLoaderData} from "react-router";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
-import {getPostById, toggleLike, toggleRepost, addComment} from "~/server/post.server";
+import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, deleteComment, editComment} from "~/server/post.server";
 import {getUserById} from "~/server/user.server";
+import {CommentThread} from "~/components/CommentThread";
 
 export async function loader({request, params}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -14,7 +15,7 @@ export async function loader({request, params}: Route.LoaderArgs) {
         throw new Response("Post not found", {status: 404});
     }
 
-    return {post};
+    return {post, userId};
 }
 
 export async function action({request, params}: Route.ActionArgs) {
@@ -35,9 +36,53 @@ export async function action({request, params}: Route.ActionArgs) {
 
     if (intent === "comment") {
         const text = formData.get("text");
+        const parentCommentId = formData.get("parentCommentId");
         if (typeof text === "string" && text.trim()) {
             const user = await getUserById(userId);
-            if (user) await addComment(userId, user.displayName, postId, text.trim());
+            if (user) {
+                await addComment(
+                    userId,
+                    user.displayName,
+                    postId,
+                    text.trim(),
+                    typeof parentCommentId === "string" ? parentCommentId : null
+                );
+            }
+        }
+        return {ok: true};
+    }
+
+    if (intent === "likeComment") {
+        const commentId = formData.get("commentId");
+        if (typeof commentId === "string") {
+            await toggleCommentLike(userId, postId, commentId);
+        }
+        return {ok: true};
+    }
+
+    if (intent === "deleteComment") {
+        const commentId = formData.get("commentId");
+        if (typeof commentId === "string") {
+            try {
+                await deleteComment(userId, postId, commentId);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Could not delete comment.";
+                return {error: message};
+            }
+        }
+        return {ok: true};
+    }
+
+    if (intent === "editComment") {
+        const commentId = formData.get("commentId");
+        const text = formData.get("text");
+        if (typeof commentId === "string" && typeof text === "string" && text.trim()) {
+            try {
+                await editComment(userId, postId, commentId, text.trim());
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Could not edit comment.";
+                return {error: message};
+            }
         }
         return {ok: true};
     }
@@ -56,7 +101,7 @@ function timeAgo(date: Date) {
 }
 
 export default function PostDetail() {
-    const {post} = useLoaderData<typeof loader>();
+    const {post, userId} = useLoaderData<typeof loader>();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -93,19 +138,12 @@ export default function PostDetail() {
                     </div>
                 )}
 
-                <div className="w-full max-w-md flex flex-col gap-2">
-                    {post.comments
-                        .filter((c) => c.parentCommentId === null)
-                        .map((comment) => (
-                            <div key={comment.id} className="flex gap-2">
-                                <p className="font-bold">{comment.displayName}</p>
-                                <p>{comment.text}</p>
-                                {comment.edited && (
-                                    <span className="text-xs text-neutral-500">(edited)</span>
-                                )}
-                            </div>
-                        ))}
-                </div>
+                <CommentThread
+                    postId={post.id}
+                    comments={post.comments}
+                    isOwnPost={post.isOwnPost}
+                    currentUserId={userId}
+                />
 
                 <Form method="post" className="flex gap-2 w-full max-w-md">
                     <input type="hidden" name="intent" value="comment" />
