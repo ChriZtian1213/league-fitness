@@ -209,7 +209,7 @@ export default function Home() {
                         </div>
                     )}
 
-                    {post.comments.length > 0 && <CommentThread post={post.id} comments={post.comments} isOwnPost={post.isOwnPost} currentUserId={user?.id ?? ""} /> }
+                    {post.comments.length > 0 && <CommentThread postId={post.id} comments={post.comments} isOwnPost={post.isOwnPost} currentUserId={user?.id ?? ""} /> }
 
                     <Form method="post" className="flex gap-2 w-full max-w-md">
                         <input type="hidden" name="intent" value="comment" />
