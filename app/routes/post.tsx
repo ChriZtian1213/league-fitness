@@ -1,8 +1,9 @@
 import type {Route} from "./+types/post";
-import {Form, useLoaderData} from "react-router";
+import {useState} from "react";
+import {Form, Link, useLoaderData} from "react-router";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
-import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, deleteComment, editComment} from "~/server/post.server";
+import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, deleteComment, editComment, editPost} from "~/server/post.server";
 import {getUserById} from "~/server/user.server";
 import {CommentThread} from "~/components/CommentThread";
 
@@ -31,6 +32,19 @@ export async function action({request, params}: Route.ActionArgs) {
 
     if (intent === "repost") {
         await toggleRepost(userId, postId);
+        return {ok: true};
+    }
+
+    if (intent === "editPost") {
+        const caption = formData.get("caption");
+        if (typeof caption === "string") {
+            try {
+                await editPost(userId, postId, caption.trim());
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Could not edit post.";
+                return {error: message};
+            }
+        }
         return {ok: true};
     }
 
@@ -102,12 +116,15 @@ function timeAgo(date: Date) {
 
 export default function PostDetail() {
     const {post, userId} = useLoaderData<typeof loader>();
+    const [isEditingCaption, setIsEditingCaption] = useState(false);
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex flex-col items-center gap-3 p-4">
                 <div className="flex flex-row gap-4 items-center">
-                    <p className="font-bold">{post.displayName}</p>
+                    <Link to={`/profile/${post.userId}`} className="font-bold hover:underline">
+                        {post.displayName}
+                    </Link>
                     <p>⚆ {timeAgo(post.createdAt)}</p>
                 </div>
 
@@ -131,11 +148,38 @@ export default function PostDetail() {
                     </Form>
                 </div>
 
-                {post.caption && (
-                    <div className="flex flex-row gap-2 w-full max-w-md">
-                        <p className="font-bold">{post.displayName}</p>
-                        <p>{post.caption}</p>
-                    </div>
+                {isEditingCaption ? (
+                    <Form
+                        method="post"
+                        className="flex gap-2 w-full max-w-md"
+                        onSubmit={() => setIsEditingCaption(false)}
+                    >
+                        <input type="hidden" name="intent" value="editPost" />
+                        <input
+                            name="caption"
+                            defaultValue={post.caption ?? ""}
+                            className="flex-1 border-b bg-transparent text-neutral-200"
+                            autoFocus
+                        />
+                        <button type="submit">Save</button>
+                        <button type="button" onClick={() => setIsEditingCaption(false)}>
+                            Cancel
+                        </button>
+                    </Form>
+                ) : (
+                    (post.caption || post.isOwnPost) && (
+                        <div className="flex flex-row gap-2 w-full max-w-md items-center">
+                            <Link to={`/profile/${post.userId}`} className="font-bold hover:underline">
+                                {post.displayName}
+                            </Link>
+                            <p>{post.caption}</p>
+                            {post.isOwnPost && (
+                                <button onClick={() => setIsEditingCaption(true)} className="text-sm text-neutral-400">
+                                    Edit
+                                </button>
+                            )}
+                        </div>
+                    )
                 )}
 
                 <CommentThread

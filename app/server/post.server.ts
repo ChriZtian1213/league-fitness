@@ -203,6 +203,19 @@ export async function deleteComment(
 
 }
 
+export async function editPost(userId: string, postId: string, newCaption: string) {
+    const db = await connectDB();
+
+    const result = await db.collection("posts").updateOne(
+        { _id: new ObjectId(postId), userId: new ObjectId(userId) },
+        { $set: { caption: newCaption } }
+    );
+
+    if (result.matchedCount === 0) {
+        throw new Error("Post not found or not authorized");
+    }
+}
+
 export async function editComment(
     userId: string,
     postId: string,

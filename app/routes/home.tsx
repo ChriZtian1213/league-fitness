@@ -3,8 +3,8 @@ import {Form, Link, useLoaderData} from "react-router"
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser} from "~/server/user.server";
-import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost} from "~/server/post.server";
-import {CommentThread} from "~/components/CommentThread";
+import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost, editPost} from "~/server/post.server";
+import {PostCard} from "~/components/PostCard";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -17,6 +17,20 @@ export async function action({request}: Route.ActionArgs) {
     const userId = await requireUserId(request);
     const formData = await request.formData();
     const intent = formData.get("intent");
+
+    if (intent === "editPost") {
+        const postId = formData.get("postId");
+        const caption = formData.get("caption");
+        if (typeof postId === "string" && typeof caption === "string") {
+            try {
+                await editPost(userId, postId, caption.trim());
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Could not edit post.";
+                return {error: message};
+            }
+        }
+        return {ok: true};
+    }
 
     if (intent === "like") {
         const postId = formData.get("postId");
@@ -93,6 +107,7 @@ export async function action({request}: Route.ActionArgs) {
                 await deletePost(userId, postId);
             } catch (error) {
                 const message = error instanceof Error ? error.message : "Could not delete post";
+                return {error: message};
             }
         }
         return {ok: true};
@@ -119,17 +134,6 @@ export async function action({request}: Route.ActionArgs) {
     return {error: "Unknown action"};
 }
 
-
-function timeAgo(date: Date) {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return "Now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}hr`;
-    return `${Math.floor(hours / 24)}d`;
-}
-
 export default function Home() {
     const {user, posts} = useLoaderData<typeof loader>();
 
@@ -137,7 +141,7 @@ export default function Home() {
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex items-center mb-4">
                 <div className="flex-1"></div>
-                <div className="flex-1 text-center font-bold text-4xl p-3">
+                <div className="flex-1 text-center font-bold text-3xl p-3">
                     League Fitness
                 </div>
                 <div className="flex-1 flex justify-end pr-4">
@@ -154,75 +158,7 @@ export default function Home() {
             )}
 
             {posts.map((post) => (
-                <div key={post.id} className="flex flex-col items-center gap-3 border-t-2 border-black p-4">
-                    <div className="flex flex-row gap-4 items-center w-full max-w-md justify-center">
-                        <Link to={`/profile/${post.userId}`} className="font-bold">
-                            {post.displayName}
-                        </Link>
-                        <p>⚆ {timeAgo(post.createdAt)}</p>
-                        {!post.isOwnPost && (
-                            <Form method="post">
-                                <input type="hidden" name="intent" value={post.isFollowing ? "unfollow" : "follow"} />
-                                <input type="hidden" name="targetUserId" value={post.userId} />
-                                <button type="submit" className={post.isFollowing ? "text-neutral-400" : "text-blue-400"}>
-                                    {post.isFollowing ? "Following" : "Follow"}
-                                </button>
-                            </Form>
-                        )}
-                        {post.isOwnPost && (
-                            <Form method="post">
-                                <input type="hidden" name="intent" value="deletePost" />
-                                <input type="hidden" name="postId" value={post.id} />
-                                <button type="submit" className="text-red-400">
-                                    Delete
-                                </button>
-                            </Form>
-                        )}
-                    </div>
-
-                    <img
-                        className="w-72 h-72 m-2 border-2 border-black object-cover"
-                        src={post.imageData}
-                        alt={post.caption ?? "Workout post"}
-                    />
-
-                    <div className="flex flex-row gap-4">
-                        <Form method="post">
-                            <input type="hidden" name="intent" value="like" />
-                            <input type="hidden" name="postId" value={post.id} />
-                            <button type="submit">
-                                {post.likedByMe ? "🔥" : "🤍"} {post.likeCount}
-                            </button>
-                        </Form>
-                        <p>🗨️ {post.commentCount}</p>
-                        <Form method="post">
-                            <input type="hidden" name="intent" value="repost" />
-                            <input type="hidden" name="postId" value={post.id} />
-                            <button type="submit">🔗 {post.repostCount}</button>
-                        </Form>
-                    </div>
-
-                    {post.caption && (
-                        <div className="flex flex-row gap-2 w-full max-w-md">
-                            <p className="font-bold">{post.displayName}</p>
-                            <p>{post.caption}</p>
-                        </div>
-                    )}
-
-                    {post.comments.length > 0 && <CommentThread postId={post.id} comments={post.comments} isOwnPost={post.isOwnPost} currentUserId={user?.id ?? ""} /> }
-
-                    <Form method="post" className="flex gap-2 w-full max-w-md">
-                        <input type="hidden" name="intent" value="comment" />
-                        <input type="hidden" name="postId" value={post.id} />
-                        <input
-                            key={`comment-input-${post.id}-${post.comments.length}`}
-                            name="text"
-                            placeholder="Add a comment..."
-                            className="flex-1 border-b bg-transparent text-neutral-200"
-                        />
-                        <button type="submit">Post</button>
-                    </Form>
-                </div>
+                <PostCard key={post.id} post={post} currentUserId={user?.id ?? ""} />
             ))}
 
             <NavBar/>
