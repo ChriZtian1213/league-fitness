@@ -1,6 +1,6 @@
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
-import { getFriendObjectIds } from "./user.server";
+import { getFollowedObjectIds, getMutualFollowObjectIds } from "./user.server";
 
 export interface WorkoutInput {
     exercise: string;
@@ -88,7 +88,7 @@ export async function deleteWorkoutEntry(
 }
 
 export type LeaderboardPeriod = "week" | "month" | "year" | "all";
-export type LeaderboardScope = "global" | "friends";
+export type LeaderboardScope = "global" | "following" | "mutual";
 export type LeaderboardMetric = "volume" | "heaviest";
 
 export interface LeaderboardEntry {
@@ -122,9 +122,14 @@ export async function getLeaderboard(
         match.createdAt = { $gte: since };
     }
 
-    if (scope === "friends") {
-        const friendIds = await getFriendObjectIds(userId);
-        match.userId = { $in: [...friendIds, new ObjectId(userId)] };
+    if (scope === "following") {
+        const followedIds = await getFollowedObjectIds(userId);
+        match.userId = { $in: [...followedIds, new ObjectId(userId)] };
+    }
+
+    if (scope === "mutual") {
+        const mutualIds = await getMutualFollowObjectIds(userId);
+        match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
     }
 
     if (exercise) {

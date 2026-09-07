@@ -101,37 +101,6 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
     return { id: user._id.toString(), displayName: user.displayName, email: user.email };
 }
 
-// Returns the ObjectIds of a user's friends. Existing users created before
-// this field existed will just have an empty friendIds list (handled by
-// the ?? [] fallback below), same as new signups now get by default.
-export async function getFriendObjectIds(userId: string): Promise<ObjectId[]> {
-    const db = await connectDB();
-
-    const user = await db
-        .collection("users")
-        .findOne({ _id: new ObjectId(userId) }, { projection: { friendIds: 1 } });
-
-    return (user?.friendIds ?? []) as ObjectId[];
-}
-
-// Adds a mutual friendship between two users. No request/accept flow yet —
-// a good next step once the leaderboard filter itself is working.
-export async function addFriend(userId: string, friendId: string): Promise<void> {
-    const db = await connectDB();
-    const userObjectId = new ObjectId(userId);
-    const friendObjectId = new ObjectId(friendId);
-
-    await db.collection("users").updateOne(
-        { _id: userObjectId },
-        { $addToSet: { friendIds: friendObjectId } }
-    );
-
-    await db.collection("users").updateOne(
-        { _id: friendObjectId },
-        { $addToSet: { friendIds: userObjectId } }
-    );
-}
-
 export async function followUser(userId: string, targetUserId: string): Promise<void> {
     const db = await connectDB();
     await db.collection("users").updateOne(
@@ -167,4 +136,33 @@ export async function isFollowing(viewerId: string, targetUserId: string): Promi
         .collection("users")
         .findOne({ _id: new ObjectId(targetUserId) }, { projection: { followerIds: 1 } });
     return (target?.followerIds ?? []).some((id: ObjectId) => id.equals(new ObjectId(viewerId)));
+}
+
+// People this user follows (their "following" list).
+export async function getFollowedObjectIds(userId: string): Promise<ObjectId[]> {
+    const db = await connectDB();
+    const userObjectId = new ObjectId(userId);
+
+    const followedUsers = await db
+        .collection("users")
+        .find({ followerIds: userObjectId })
+        .project({ _id: 1 })
+        .toArray();
+
+    return followedUsers.map((u: any) => u._id);
+}
+
+// Mutual follows: people this user follows AND who follow this user back.
+export async function getMutualFollowObjectIds(userId: string): Promise<ObjectId[]> {
+    const db = await connectDB();
+    const userObjectId = new ObjectId(userId);
+
+    const [me, following] = await Promise.all([
+        db.collection("users").findOne({ _id: userObjectId }, { projection: { followerIds: 1 } }),
+        getFollowedObjectIds(userId),
+    ]);
+
+    const myFollowerIds = new Set((me?.followerIds ?? []).map((id: ObjectId) => id.toString()));
+
+    return following.filter((id) => myFollowerIds.has(id.toString()));
 }

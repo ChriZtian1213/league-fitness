@@ -23,7 +23,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
     const requestedScope = url.searchParams.get("scope");
     const scope: LeaderboardScope =
-        requestedScope === "friends" ? "friends" : "global";
+        requestedScope === "following" || requestedScope === "mutual" ? requestedScope : "global";
 
     const requestedMetric = url.searchParams.get("metric");
     const metric: LeaderboardMetric =
@@ -92,8 +92,14 @@ export default function Leaderboard() {
                         Global
                     </Link>
                     <Link
-                        to={buildLink(current, { scope: "friends" })}
-                        className={`px-3 py-1 ${scope === "friends" ? "bg-neutral-500" : ""}`}
+                        to={buildLink(current, { scope: "following" })}
+                        className={`px-3 py-1 ${scope === "following" ? "bg-neutral-500" : ""}`}
+                    >
+                        Following
+                    </Link>
+                    <Link
+                        to={buildLink(current, { scope: "mutual" })}
+                        className={`px-3 py-1 ${scope === "mutual" ? "bg-neutral-500" : ""}`}
                     >
                         Friends
                     </Link>
@@ -138,20 +144,23 @@ export default function Leaderboard() {
                     <p>
                         {exercise
                             ? `No ${exercise} logs yet for this period.`
-                            : scope === "friends"
-                                ? "No friend activity for this period yet."
-                                : "No logged lifts yet for this period."}
+                            : scope === "mutual"
+                                ? "No mutual friend activity for this period yet."
+                                : scope === "following"
+                                    ? "No activity yet from people you follow."
+                                    : "No logged lifts yet for this period."}
                     </p>
                 )}
 
                 {leaderboard.map((entry, index) => (
-                    <div
+                    <Link
                         key={entry.userId}
-                        className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2"
+                        to={`/profile/${entry.userId}`}
+                        className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
                     >
                         <span>#{index + 1} {entry.displayName}</span>
                         <span>{entry.value.toLocaleString()} lbs</span>
-                    </div>
+                    </Link>
                 ))}
             </div>
 
