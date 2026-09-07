@@ -1,87 +1,105 @@
-# Welcome to React Router!
+# League Fitness 🏋️
 
-A modern, production-ready template for building full-stack React applications using React Router.
-
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+A full-stack fitness tracking and social app built with React Router 7 and MongoDB. Log workouts, compete on leaderboards, and share your progress with friends.
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+**Workout Logging**
+- Multi-step flow: category → muscle group → exercise → log
+- Supports both strength training (weight × reps) and cardio (distance + time)
+- Create custom exercises on the fly
+- Edit-friendly input flow with keyboard-driven set logging (Enter to submit and jump to the next field)
+
+**Leaderboard**
+- Filter by time period (week / month / all-time)
+- Filter by scope: Global, Following, or Mutual Friends
+- Rank by Total Volume or Heaviest Single Lift
+- Filter by specific exercise (e.g. "Bench Press" only)
+
+**Social Feed**
+- Post workout photos with captions
+- Like, comment, and repost
+- Threaded comment replies, with comment likes
+- Edit or delete your own posts and comments
+- Post owners can moderate comments on their own posts
+
+**Profiles & Follows**
+- Public profile pages showing posts, reposts, and stats
+- Follow / unfollow other users
+- "Friends" leaderboard scope = mutual follows (no separate friend-request system — it's derived from who follows whom)
+
+**Search**
+- Find other users by display name
+
+**Auth**
+- Email/password signup and login
+- Passwords hashed with bcrypt
+- Session-based authentication
+
+## Tech Stack
+
+- **Framework:** [React Router 7](https://reactrouter.com/) (framework mode, SSR)
+- **Database:** MongoDB (native driver, no ORM)
+- **Styling:** Tailwind CSS
+- **Language:** TypeScript
+- **Build tool:** Vite
 
 ## Getting Started
 
-### Installation
+### Prerequisites
+- Node.js
+- A MongoDB connection string (e.g. from [MongoDB Atlas](https://www.mongodb.com/atlas))
 
-Install the dependencies:
+### Installation
 
 ```bash
 npm install
 ```
 
-### Development
+### Environment Variables
 
-Start the development server with HMR:
+Create a `.env` file in the project root:
+
+```
+MONGODB_URI=your-mongodb-connection-string-here
+```
+
+### Development
 
 ```bash
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The app will be available at `http://localhost:5173`.
 
-## Building for Production
+### Type Checking
 
-Create a production build:
+```bash
+npm run typecheck
+```
+
+### Production Build
 
 ```bash
 npm run build
+npm run start
 ```
 
-## Deployment
-
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
+## Project Structure
 
 ```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
+app/
+├── components/       # Shared UI components (NavBar, PostCard, CommentThread, forms)
+├── features/         # Feature-specific hooks (e.g. workout flow state)
+├── routes/           # File-based routes (loaders, actions, and page components)
+├── server/           # Database access — one file per domain (users, workouts, posts)
+└── types/            # Shared TypeScript types
 ```
 
-## Styling
+## Known Limitations
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+- Post images are stored as base64 strings directly in MongoDB. This is simple and works well at small scale, but isn't how you'd want to handle image storage in a larger production app (a dedicated object store like S3 or Cloudinary would be the next step).
+- No rate limiting on auth endpoints yet.
+- Profile URLs currently use raw MongoDB ObjectIds rather than usernames/handles.
 
----
-
-Built with ❤️ using React Router.
+Personal project — built for fun, feedback welcome!
