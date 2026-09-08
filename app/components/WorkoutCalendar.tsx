@@ -11,6 +11,11 @@ function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
+function todayStr() {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props) {
     const loggedSet = new Set(loggedDates);
 
@@ -83,7 +88,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props)
                 })}
             </div>
 
-            {selectedDate && (
+            {selectedDate && selectedDate !== todayStr() && (
                 <div className="flex justify-center mt-2">
                     <Link to="/log" className="text-xs text-neutral-400 underline">
                         Clear selection
