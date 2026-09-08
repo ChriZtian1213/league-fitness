@@ -10,12 +10,13 @@ import {LogStep} from "~/components/LogStep";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
 import {useFetcher, useLoaderData} from "react-router";
-import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry} from "~/server/workout.server";
+import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getAllExerciseNames} from "~/server/workout.server";
 
 export async function loader({request}: Route.LoaderArgs){
     const userId = await requireUserId(request);
     const workouts = await getWorkoutsForUser(userId);
-    return {workouts};
+    const existingExerciseNames = await getAllExerciseNames();
+    return {workouts, existingExerciseNames};
 }
 
 export async function action({request}: Route.ActionArgs){
@@ -56,7 +57,7 @@ export async function action({request}: Route.ActionArgs){
 }
 
 export default function Log(){
-    const {workouts: initialWorkouts} = useLoaderData<typeof loader>();
+    const {workouts: initialWorkouts, existingExerciseNames} = useLoaderData<typeof loader>();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
@@ -190,6 +191,7 @@ export default function Log(){
                             category={flow.category}
                             muscle={flow.muscle}
                             exercises={exercises}
+                            existingExerciseNames={existingExerciseNames}
                             onSelectExercise={(exercise) => {
                                 setSelectedExercise(exercise)
                                 flow.next()

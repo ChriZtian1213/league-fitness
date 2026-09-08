@@ -7,13 +7,14 @@ type Props = {
     category: Category;
     muscle: Muscle | null
     exercises: Exercise[]
+    existingExerciseNames: string[]
     onSelectExercise: (exercise: Exercise) => void
     onCreateExercise: (name: string) => void
     onBack: () => void
     onHome?: ()=> void
 }
 
-export function ExerciseStep({ category, muscle, exercises, onSelectExercise, onCreateExercise, onBack, onHome}: Props) {
+export function ExerciseStep({ category, muscle, exercises, onSelectExercise, existingExerciseNames, onCreateExercise, onBack, onHome}: Props) {
     const [query, setQuery] = useState("");
 
     const filteredExercises = exercises.filter((exercise) => {
@@ -32,6 +33,10 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, on
 
     const noResults = query.length > 0 && filteredExercises.length === 0
 
+    const exactExistingMatch = existingExerciseNames.find(
+        (name) => name.toLowerCase() === query.toLowerCase()
+    );
+
     return (
         <div className={"flex flex-col gap-2"}>
             <h2>Exercise Step </h2>
@@ -41,7 +46,13 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, on
                 placeholder="Search exercise..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                list="existing-exercise-names"
             />
+            <datalist id="existing-exercise-names">
+                {existingExerciseNames.map((name) => (
+                    <option key={name} value={name} />
+                ))}
+            </datalist>
 
             <div className="flex flex-row gap-2">
                 {filteredExercises.map((exercise) => (
@@ -61,10 +72,10 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, on
                 <button
                     className={"size-24 border"}
                     onClick={() =>
-                        onCreateExercise(query)
+                        onCreateExercise(exactExistingMatch ?? query)
                     }
                 >
-                    <p>➕</p>"{query}"
+                    <p>➕</p>"{exactExistingMatch ?? query}"
                 </button>
             )}
 

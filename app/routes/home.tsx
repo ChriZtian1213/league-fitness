@@ -3,14 +3,22 @@ import {Form, Link, useLoaderData} from "react-router"
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser} from "~/server/user.server";
-import {getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost, editPost} from "~/server/post.server";
+import {
+    getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost, editPost,
+    type FeedScope
+} from "~/server/post.server";
 import {PostCard} from "~/components/PostCard";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
     const user = await getUserById(userId);
-    const posts = await getFeed(userId);
-    return {user, posts};
+
+    const url = new URL(request.url);
+    const requestedScope = url.searchParams.get("scope");
+    const scope: FeedScope = requestedScope === "global" ? "global" : "following";
+
+    const posts = await getFeed(userId, scope);
+    return {user, posts, scope};
 }
 
 export async function action({request}: Route.ActionArgs) {
@@ -135,13 +143,13 @@ export async function action({request}: Route.ActionArgs) {
 }
 
 export default function Home() {
-    const {user, posts} = useLoaderData<typeof loader>();
+    const {user, posts, scope} = useLoaderData<typeof loader>();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex items-center mb-4">
                 <div className="flex-1"></div>
-                <div className="flex-1 text-center font-bold text-3xl p-3">
+                <div className="flex-1 text-center font-bold text-4xl p-3">
                     League Fitness
                 </div>
                 <div className="flex-1 flex justify-end pr-4">
@@ -153,8 +161,29 @@ export default function Home() {
 
             <h2 className="px-4">Welcome back, {user?.displayName}!</h2>
 
+            <div className="flex justify-center gap-2 py-3 text-sm">
+                <div className="flex border border-neutral-500 rounded-md overflow-hidden">
+                    <Link
+                        to="?scope=following"
+                        className={`px-4 py-1 ${scope === "following" ? "bg-neutral-500" : ""}`}
+                    >
+                        Following
+                    </Link>
+                    <Link
+                        to="?scope=global"
+                        className={`px-4 py-1 ${scope === "global" ? "bg-neutral-500" : ""}`}
+                    >
+                        Global
+                    </Link>
+                </div>
+            </div>
+
             {posts.length === 0 && (
-                <p className="text-center py-8">No posts yet — be the first!</p>
+                <p className="text-center py-8">
+                    {scope === "following"
+                        ? "No posts yet from people you follow — try Global, or check back later!"
+                        : "No posts yet — be the first!"}
+                </p>
             )}
 
             {posts.map((post) => (

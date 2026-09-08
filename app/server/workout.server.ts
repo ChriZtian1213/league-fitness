@@ -205,3 +205,23 @@ export async function getLoggedExerciseNames(): Promise<string[]> {
 
     return results.map((doc) => doc._id);
 }
+
+// Returns every distinct exercise name ever logged, across all categories
+// (strength AND cardio), for autocomplete suggestions when someone creates
+// a new custom exercise — helps people converge on consistent naming
+// instead of creating near-duplicates like "Cable Fly" vs "Cable Flys".
+export async function getAllExerciseNames(): Promise<string[]> {
+    const db = await connectDB();
+
+    const cursorResults = await db
+        .collection("workouts")
+        .aggregate([
+            { $group: { _id: "$exercise" } },
+            { $sort: { _id: 1 } },
+        ])
+        .toArray();
+
+    const results = cursorResults as { _id: string }[];
+
+    return results.map((doc) => doc._id);
+}

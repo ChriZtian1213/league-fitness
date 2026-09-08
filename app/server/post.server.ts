@@ -1,5 +1,8 @@
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
+import {getFollowedObjectIds} from "~/server/user.server";
+
+export type FeedScope = "following" | "global";
 
 export interface CreatePostInput {
     imageData: string;
@@ -22,26 +25,38 @@ export async function createPost(userId: string, data: CreatePostInput) {
 
 // Global feed, newest first. Also computes per-viewer state (liked/following)
 // so the UI doesn't need a second round trip.
-export async function getFeed(viewerUserId: string) {
+export async function getFeed(viewerUserId: string, scope: FeedScope = "following") {
     const db = await connectDB();
     const viewerObjectId = new ObjectId(viewerUserId);
 
-    const posts = await db
-        .collection("posts")
-        .aggregate([
-            { $sort: { createdAt: -1 } },
-            { $limit: 50 },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "userId",
-                    foreignField: "_id",
-                    as: "author",
-                },
+    const match: Record<string, any> = {};
+
+    if (scope === "following") {
+        const followedIds = await getFollowedObjectIds(viewerUserId);
+        match.userId = { $in: [...followedIds, viewerObjectId] };
+    }
+
+    const pipeline: any[] = [];
+
+    if (Object.keys(match).length > 0) {
+        pipeline.push({ $match: match });
+    }
+
+    pipeline.push(
+        { $sort: { createdAt: -1 } },
+        { $limit: 50 },
+        {
+            $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                as: "author",
             },
-            { $unwind: "$author" },
-        ])
-        .toArray();
+        },
+        { $unwind: "$author" }
+    );
+
+    const posts = await db.collection("posts").aggregate(pipeline).toArray();
 
     return posts.map((post: any) => ({
         id: post._id.toString(),
@@ -332,7 +347,6 @@ export async function getPostById(viewerUserId: string, postId: string) {
 
     const post = posts[0];
     if (!post) return null;
-
     return {
         id: post._id.toString(),
         userId: post.userId.toString(),
