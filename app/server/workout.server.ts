@@ -225,3 +225,25 @@ export async function getAllExerciseNames(): Promise<string[]> {
 
     return results.map((doc) => doc._id);
 }
+
+// Returns the set of dates (YYYY-MM-DD, in local server time) this user
+// logged at least one workout on — used to highlight days on the calendar.
+export async function getWorkoutDatesForUser(userId: string): Promise<string[]> {
+    const db = await connectDB();
+
+    const cursorResults = await db
+        .collection("workouts")
+        .aggregate([
+            { $match: { userId: new ObjectId(userId) } },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                    },
+                },
+            },
+        ])
+        .toArray();
+
+    return (cursorResults as { _id: string }[]).map((doc) => doc._id);
+}

@@ -21,6 +21,12 @@ export function MuscleStep({category, onSelect, onBack}: Props)  {
 
                         <button
                             className={"size-24 border"}
+                            onClick={() => onSelect("back")}>
+                            Back
+                        </button>
+
+                        <button
+                            className={"size-24 border"}
                             onClick={() => onSelect("triceps")}>
                             Triceps
                         </button>

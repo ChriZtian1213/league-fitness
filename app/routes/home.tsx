@@ -148,8 +148,8 @@ export default function Home() {
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex items-center mb-4">
-                <div className="flex-1"></div>
-                <div className="flex-1 text-center font-bold text-4xl p-3">
+                <div className="flex-1 flex justify-center"></div>
+                <div className="flex-1 text-center font-bold text-3xl p-3">
                     League Fitness
                 </div>
                 <div className="flex-1 flex justify-end pr-4">

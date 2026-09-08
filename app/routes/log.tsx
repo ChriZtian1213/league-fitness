@@ -10,13 +10,22 @@ import {LogStep} from "~/components/LogStep";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
 import {useFetcher, useLoaderData} from "react-router";
-import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getAllExerciseNames} from "~/server/workout.server";
+import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getAllExerciseNames, getWorkoutDatesForUser } from "~/server/workout.server";
+import {WorkoutCalendar} from "~/components/WorkoutCalendar";
 
 export async function loader({request}: Route.LoaderArgs){
     const userId = await requireUserId(request);
     const workouts = await getWorkoutsForUser(userId);
     const existingExerciseNames = await getAllExerciseNames();
-    return {workouts, existingExerciseNames};
+
+    const url = new URL(request.url);
+    const now = new Date();
+    const year = Number(url.searchParams.get("year")) || now.getFullYear();
+    const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
+
+    const loggedDates = await getWorkoutDatesForUser(userId);
+
+    return {workouts, existingExerciseNames, year, month, loggedDates};
 }
 
 export async function action({request}: Route.ActionArgs){
@@ -57,7 +66,7 @@ export async function action({request}: Route.ActionArgs){
 }
 
 export default function Log(){
-    const {workouts: initialWorkouts, existingExerciseNames} = useLoaderData<typeof loader>();
+    const {workouts: initialWorkouts, existingExerciseNames, year, month, loggedDates} = useLoaderData<typeof loader>();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
@@ -236,6 +245,10 @@ export default function Log(){
                             }}
                         />
                     )}
+                </div>
+
+                <div className="py-4">
+                    <WorkoutCalendar year={year} month={month} loggedDates={loggedDates} />
                 </div>
 
 
