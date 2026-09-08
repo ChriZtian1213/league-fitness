@@ -52,6 +52,8 @@ export async function action({request}: Route.ActionArgs){
     }
 
     const exercise = formData.get("exercise");
+    const category = formData.get("category");
+    const muscle = formData.get("muscle");
     const weight = formData.get("weight");
     const reps = formData.get("reps");
     const distance = formData.get("distance");
@@ -61,9 +63,14 @@ export async function action({request}: Route.ActionArgs){
     if (typeof exercise !== "string" || !exercise) {
         return {error: "Missing exercise name."}
     }
+    if (typeof category !== "string") {
+        return {error: "Missing category."}
+    }
 
     const workout = await createWorkoutEntry(userId, {
         exercise,
+        category: category as any, // matches your Category type
+        muscle: typeof muscle === "string" ? (muscle as any) : undefined,
         weight: typeof weight === "string" && weight ? Number(weight) : undefined,
         reps: typeof reps === "string" && reps ? Number(reps) : undefined,
         distance: typeof distance === "string" && distance ? Number(distance) : undefined,
@@ -118,6 +125,8 @@ export default function Log(){
         setWorkouts((prev) => [workout, ...prev])
         const formData = new FormData();
         formData.set("exercise", workout.exercise);
+        formData.set("category", workout.category);
+        if (workout.muscle) formData.set("muscle", workout.muscle);
         formData.set("tempId", workout.id);
         if (workout.weight !== undefined) formData.set("weight", String(workout.weight));
         if (workout.reps !== undefined) formData.set("reps", String(workout.reps));

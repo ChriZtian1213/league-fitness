@@ -85,7 +85,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props)
 
             {selectedDate && (
                 <div className="flex justify-center mt-2">
-                    <Link to={`?year=${year}&month=${month}`} className="text-xs text-neutral-400 underline">
+                    <Link to="/log" className="text-xs text-neutral-400 underline">
                         Clear selection
                     </Link>
                 </div>

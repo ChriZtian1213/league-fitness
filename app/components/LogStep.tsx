@@ -56,6 +56,8 @@ export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
             const workout: WorkoutEntry = {
                 id: crypto.randomUUID(),
                 exercise: exercise.name,
+                category: exercise.category,
+                muscle: exercise.muscle,
                 distance: Number(distance),
                 time: normalizedTime,
                 createdAt: new Date()
@@ -84,6 +86,8 @@ export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
             const workout: WorkoutEntry = {
                 id: crypto.randomUUID(),
                 exercise: exercise.name,
+                category: exercise.category,
+                muscle: exercise.muscle,
                 weight: Number(weight),
                 reps: Number(reps),
                 createdAt: new Date()

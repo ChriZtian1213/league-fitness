@@ -1,9 +1,12 @@
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
 import { getFollowedObjectIds, getMutualFollowObjectIds } from "./user.server";
+import type { Category, Muscle} from "~/types/workout";
 
 export interface WorkoutInput {
     exercise: string;
+    category: Category;
+    muscle?: Muscle;
     weight?: number;
     reps?: number;
     distance?: number;
@@ -13,6 +16,34 @@ export interface WorkoutInput {
 export interface StoredWorkout extends WorkoutInput {
     id: string;
     createdAt: Date;
+}
+
+export interface ExerciseCatalogEntry {
+    category: Category;
+    muscle: Muscle;
+    exercise: string;
+}
+
+export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
+    const db = await connectDB();
+
+    const results = await db
+        .collection("workouts")
+        .aggregate([
+            {
+                $group: {
+                    _id: { category: "$category", muscle: "$muscle", exercise: "$exercise" },
+                },
+            },
+            { $sort: { "_id.exercise": 1 } },
+        ])
+        .toArray();
+
+    return results.map((doc: any)=> ({
+        category: doc._id.category ?? null,
+        muscle: doc._id.muscle ?? null,
+        exercise: doc._id.exercise,
+    }));
 }
 
 // Saves one logged workout for a given user.
@@ -26,6 +57,8 @@ export async function createWorkoutEntry(
     const result = await db.collection("workouts").insertOne({
         userId: new ObjectId(userId),
         exercise: data.exercise,
+        category: data.category,
+        muscle: data.muscle,
         weight: data.weight,
         reps: data.reps,
         distance: data.distance,
@@ -36,6 +69,8 @@ export async function createWorkoutEntry(
     return {
         id: result.insertedId.toString(),
         exercise: data.exercise,
+        category: data.category,
+        muscle: data.muscle,
         weight: data.weight,
         reps: data.reps,
         distance: data.distance,
@@ -95,6 +130,7 @@ export interface LeaderboardEntry {
     userId: string;
     displayName: string;
     value: number; // total volume, or heaviest single weight lifted
+    exercise?: string;
 }
 
 // Ranks users either by total weight moved (weight x reps, summed) or by
@@ -106,6 +142,8 @@ export async function getLeaderboard(
     scope: LeaderboardScope,
     metric: LeaderboardMetric,
     userId: string,
+    category: string | null,
+    muscle: string | null,
     exercise: string | null
 ): Promise<LeaderboardEntry[]> {
     const db = await connectDB();
@@ -132,53 +170,65 @@ export async function getLeaderboard(
         match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
     }
 
-    if (exercise) {
-        match.exercise = exercise;
-    }
+    if (category) match.category = category;
+    if (muscle) match.muscle = muscle;
+    if (exercise) match.exercise = exercise;
 
-    const group =
-        metric === "heaviest"
-            ? {
-                _id: "$userId",
-                value: { $max: "$weight" },
-            }
-            : {
-                _id: "$userId",
-                value: { $sum: { $multiply: ["$weight", "$reps"] } },
-            };
+    let pipeline: any[];
 
-    const results = await db
-        .collection("workouts")
-        .aggregate([
-            // 1. Only look at strength entries within the time window (and scope)
+    if (metric === "heaviest") {
+        // Sort so the heaviest set per user comes first, then take that
+        // document's weight AND exercise name together with $first —
+        // avoids the ambiguity of a bare number with no context.
+        pipeline = [
             { $match: match },
-            // 2. Group all matching entries by user, computing volume or max weight
-            { $group: group },
-            // 3. Highest value first
+            { $sort: { weight: -1, reps: -1 } },
+            {
+                $group: {
+                    _id: "$userId",
+                    value: { $first: "$weight" },
+                    exercise: { $first: "$exercise" },
+                },
+            },
             { $sort: { value: -1 } },
             { $limit: 50 },
-            // 4. Join against the users collection to get displayName
+        ];
+    } else {
+        pipeline = [
+            { $match: match },
             {
-                $lookup: {
-                    from: "users",
-                    localField: "_id",
-                    foreignField: "_id",
-                    as: "user",
+                $group: {
+                    _id: "$userId",
+                    value: { $sum: { $multiply: ["$weight", "$reps"] } },
                 },
             },
-            { $unwind: "$user" },
-            // 5. Shape the final output
-            {
-                $project: {
-                    _id: 0,
-                    userId: { $toString: "$_id" },
-                    displayName: "$user.displayName",
-                    value: 1,
-                },
-            },
-        ])
-        .toArray();
+            { $sort: { value: -1 } },
+            { $limit: 50 },
+        ];
+    }
 
+    pipeline.push(
+        {
+            $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "_id",
+                as: "user",
+            },
+        },
+        { $unwind: "$user" },
+        {
+            $project: {
+                _id: 0,
+                userId: { $toString: "$_id" },
+                displayName: "$user.displayName",
+                value: 1,
+                exercise: 1,
+            },
+        }
+    );
+
+    const results = await db.collection("workouts").aggregate(pipeline).toArray();
     return results as LeaderboardEntry[];
 }
 
