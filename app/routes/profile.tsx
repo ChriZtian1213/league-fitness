@@ -137,12 +137,14 @@ export default function Profile() {
                 >
                     Posts
                 </button>
+                {/* TODO: Add Save Feature
                 <button
                     onClick={() => setActiveTab("saved")}
                     className={activeTab === "saved" ? "underline font-bold" : ""}
                 >
                     Saved
                 </button>
+                */}
                 <button
                     onClick={() => setActiveTab("reposts")}
                     className={activeTab === "reposts" ? "underline font-bold" : ""}
