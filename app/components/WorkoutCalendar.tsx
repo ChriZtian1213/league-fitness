@@ -4,13 +4,14 @@ type Props = {
     year: number;
     month: number; // 1-12
     loggedDates: string[]; // "YYYY-MM-DD" strings
+    selectedDate: string | null; // "YYYY-MM-DD" or null
 };
 
 function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
-export function WorkoutCalendar({year, month, loggedDates}: Props) {
+export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props) {
     const loggedSet = new Set(loggedDates);
 
     const firstOfMonth = new Date(year, month - 1, 1);
@@ -23,7 +24,6 @@ export function WorkoutCalendar({year, month, loggedDates}: Props) {
 
     const monthLabel = firstOfMonth.toLocaleString("default", {month: "long", year: "numeric"});
 
-    // Build prev/next month params
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
     const nextMonth = month === 12 ? 1 : month + 1;
@@ -65,20 +65,31 @@ export function WorkoutCalendar({year, month, loggedDates}: Props) {
                     const dateStr = `${year}-${pad(month)}-${pad(day)}`;
                     const isLogged = loggedSet.has(dateStr);
                     const isToday = isCurrentMonth && day === todayDate;
+                    const isSelected = selectedDate === dateStr;
 
                     return (
-                        <div
+                        <Link
                             key={i}
+                            to={`?year=${year}&month=${month}&date=${dateStr}`}
                             className={`aspect-square flex items-center justify-center rounded-md text-sm
                                 ${isLogged ? "bg-green-700 text-white font-bold" : "bg-neutral-700 text-neutral-300"}
                                 ${isToday ? "ring-2 ring-blue-400" : ""}
+                                ${isSelected ? "ring-2 ring-yellow-400" : ""}
                             `}
                         >
                             {day}
-                        </div>
+                        </Link>
                     );
                 })}
             </div>
+
+            {selectedDate && (
+                <div className="flex justify-center mt-2">
+                    <Link to={`?year=${year}&month=${month}`} className="text-xs text-neutral-400 underline">
+                        Clear selection
+                    </Link>
+                </div>
+            )}
         </div>
     );
 }
