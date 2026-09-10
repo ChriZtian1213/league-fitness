@@ -11,7 +11,7 @@ import {NavBar} from "~/components/NavBar";
 import {WorkoutCalendar} from "~/components/WorkoutCalendar";
 import {requireUserId} from "~/server/session.server";
 import {useFetcher, useLoaderData} from "react-router";
-import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getAllExerciseNames, getWorkoutDatesForUser} from "~/server/workout.server";
+import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
 
 function toDateStr(date: Date) {
     const d = new Date(date);
@@ -24,7 +24,7 @@ function toDateStr(date: Date) {
 export async function loader({request}: Route.LoaderArgs){
     const userId = await requireUserId(request);
     const workouts = await getWorkoutsForUser(userId);
-    const existingExerciseNames = await getAllExerciseNames();
+    const exerciseCatalog = await getExerciseCatalog();
     const loggedDates = await getWorkoutDatesForUser(userId);
 
     const url = new URL(request.url);
@@ -33,7 +33,7 @@ export async function loader({request}: Route.LoaderArgs){
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
     const date = url.searchParams.get("date") ?? toDateStr(now);
 
-    return {workouts, existingExerciseNames, loggedDates, year, month, date};
+    return {workouts, exerciseCatalog, loggedDates, year, month, date};
 }
 
 export async function action({request}: Route.ActionArgs){
@@ -103,7 +103,7 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 }
 
 export default function Log(){
-    const {workouts: initialWorkouts, existingExerciseNames, loggedDates, year, month, date} = useLoaderData<typeof loader>();
+    const {workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date} = useLoaderData<typeof loader>();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
@@ -161,6 +161,14 @@ export default function Log(){
         group.push(w);
         groupedByExercise.set(w.exercise, group);
     }
+
+    const existingExerciseNames = exerciseCatalog
+        .filter((c) => {
+            if (flow.category && c.category !== flow.category) return false;
+            if (flow.muscle && c.muscle !== flow.muscle) return false;
+            return true;
+        })
+        .map((c) => c.exercise);
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">

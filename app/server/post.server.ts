@@ -62,6 +62,7 @@ export async function getFeed(viewerUserId: string, scope: FeedScope = "followin
         id: post._id.toString(),
         userId: post.userId.toString(),
         displayName: post.author.displayName,
+        profilePicture: post.author.profilePicture ?? null,
         imageData: post.imageData,
         caption: post.caption,
         createdAt: post.createdAt,

@@ -20,7 +20,14 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
 
     return (
         <div className="flex flex-col items-center gap-3 border-t-2 border-black p-4">
-            <div className="flex flex-row gap-4 items-center w-full max-w-md justify-center">
+            <div className="flex flex-row gap-2 items-center w-full max-w-md justify-center">
+                <Link to={`/profile/${post.userId}`}>
+                    <img
+                        src={post.profilePicture || "/favicon.ico"}
+                        alt={`${post.displayName}'s profile picture`}
+                        className="w-8 h-8 rounded-full object-cover border border-black"
+                    />
+                </Link>
                 <Link to={`/profile/${post.userId}`} className="font-bold">
                     {post.displayName}
                 </Link>

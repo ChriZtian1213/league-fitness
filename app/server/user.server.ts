@@ -7,6 +7,47 @@ export interface UserSearchResult {
     displayName: string;
 }
 
+export interface PublicUser {
+    id: string;
+    displayName: string;
+    email: string;
+    bio?: string;
+    profilePicture?: string;
+}
+
+export async function getUserById(userId: string): Promise<PublicUser | null> {
+    const db = await connectDB();
+    const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+    if (!user) return null;
+    return {
+        id: user._id.toString(),
+        displayName: user.displayName,
+        email: user.email,
+        bio: user.bio,
+        profilePicture: user.profilePicture,
+    };
+}
+
+export interface UpdateProfileInput {
+    bio?: string;
+    profilePicture?: string;
+}
+
+export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<void> {
+    const db = await connectDB();
+
+    const update: Record<string, any> = {};
+    if (data.bio !== undefined) update.bio = data.bio;
+    if (data.profilePicture !== undefined) update.profilePicture = data.profilePicture;
+
+    if (Object.keys(update).length === 0) return;
+
+    await db.collection("users").updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: update }
+    );
+}
+
 // Case-insensitive partial match on displayName. Escapes regex special
 // characters so a search containing them (e.g. "a+b") doesn't throw or
 // behave unexpectedly.
@@ -92,13 +133,6 @@ export interface PublicUser {
     id: string;
     displayName: string;
     email: string;
-}
-
-export async function getUserById(userId: string): Promise<PublicUser | null> {
-    const db = await connectDB();
-    const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
-    if (!user) return null;
-    return { id: user._id.toString(), displayName: user.displayName, email: user.email };
 }
 
 export async function followUser(userId: string, targetUserId: string): Promise<void> {

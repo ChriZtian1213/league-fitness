@@ -10,6 +10,7 @@ import {
     getFollowerCount,
     getFollowingCount,
     isFollowing,
+    updateProfile,
 } from "~/server/user.server";
 import {getPostsByUser, getPostCount, getRepostedPostsByUser} from "~/server/post.server";
 
@@ -34,15 +35,8 @@ export async function loader({request, params}: Route.LoaderArgs) {
         ]);
 
     return {
-        user,
-        posts,
-        reposts,
-        postCount,
-        followerCount,
-        followingCount,
-        isOwnProfile,
-        viewerIsFollowing,
-        profileUserId,
+        user, posts, reposts, postCount, followerCount, followingCount,
+        isOwnProfile, viewerIsFollowing, profileUserId,
     };
 }
 
@@ -62,28 +56,46 @@ export async function action({request, params}: Route.ActionArgs) {
         return {ok: true};
     }
 
+    if (intent === "editProfile") {
+        const bio = formData.get("bio");
+        const image = formData.get("profilePicture");
+
+        const update: {bio?: string; profilePicture?: string} = {};
+
+        if (typeof bio === "string") {
+            update.bio = bio.trim();
+        }
+
+        if (image instanceof File && image.size > 0) {
+            if (image.size > 5 * 1024 * 1024) {
+                return {error: "Image must be under 5MB."};
+            }
+            const arrayBuffer = await image.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            update.profilePicture = `data:${image.type};base64,${base64}`;
+        }
+
+        await updateProfile(viewerId, update);
+        return {ok: true};
+    }
+
     return {error: "Unknown action"};
 }
 
 export default function Profile() {
     const {
-        user,
-        posts,
-        reposts,
-        postCount,
-        followerCount,
-        followingCount,
-        isOwnProfile,
-        viewerIsFollowing,
+        user, posts, reposts, postCount, followerCount, followingCount,
+        isOwnProfile, viewerIsFollowing,
     } = useLoaderData<typeof loader>();
 
     const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts">("posts");
+    const [isEditing, setIsEditing] = useState(false);
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex items-center mb-4">
                 <div className="flex-1"></div>
-                <div className="flex-1 text-center font-bold text-4xl p-3">
+                <div className="flex-1 text-center font-bold text-3xl p-3">
                     League Fitness
                 </div>
                 <div className="flex-1 flex justify-end">
@@ -97,12 +109,16 @@ export default function Profile() {
 
             <div className="flex flex-row justify-center items-center">
                 <img
-                    className="w-32 h-32 rounded-full m-2 border-2 border-black"
-                    src="/favicon.ico"
+                    className="w-32 h-32 rounded-full m-2 border-2 border-black object-cover"
+                    src={user?.profilePicture || "/favicon.ico"}
+                    alt={`${user?.displayName ?? "User"}'s profile picture`}
                 />
                 <div className="flex flex-col p-8">
                     <p className="text-3xl font-bold">{user?.displayName}</p>
-                    <div className="flex flex-row gap-2">
+                    {user?.bio && !isEditing && (
+                        <p className="text-sm text-neutral-300 mt-1 max-w-xs">{user.bio}</p>
+                    )}
+                    <div className="flex flex-row gap-2 mt-1">
                         <p>{postCount} posts</p>
                         <p>{followerCount} followers</p>
                         <p>{followingCount} following</p>
@@ -110,7 +126,9 @@ export default function Profile() {
                 </div>
 
                 {isOwnProfile ? (
-                    <button className="text-3xl">⛭ Edit</button>
+                    <button className="text-3xl" onClick={() => setIsEditing((v) => !v)}>
+                        ⛭ {isEditing ? "Close" : "Edit"}
+                    </button>
                 ) : (
                     <Form method="post">
                         <input
@@ -130,6 +148,43 @@ export default function Profile() {
                 )}
             </div>
 
+            {isOwnProfile && isEditing && (
+                <Form
+                    method="post"
+                    encType="multipart/form-data"
+                    className="flex flex-col gap-3 max-w-md mx-auto px-4 pb-4"
+                    onSubmit={() => setIsEditing(false)}
+                >
+                    <input type="hidden" name="intent" value="editProfile" />
+
+                    <label className="text-sm text-neutral-400">
+                        Profile picture
+                        <input
+                            type="file"
+                            name="profilePicture"
+                            accept="image/*"
+                            className="block mt-1 text-sm"
+                        />
+                    </label>
+
+                    <label className="text-sm text-neutral-400">
+                        Bio
+                        <textarea
+                            name="bio"
+                            defaultValue={user?.bio ?? ""}
+                            placeholder="Tell people about yourself..."
+                            className="block w-full mt-1 border rounded-md p-2 bg-transparent text-neutral-200"
+                            rows={3}
+                            maxLength={200}
+                        />
+                    </label>
+
+                    <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
+                        Save Changes
+                    </button>
+                </Form>
+            )}
+
             <div className="flex flex-row gap-4 pb-4 justify-center text-xl border-b border-black">
                 <button
                     onClick={() => setActiveTab("posts")}
@@ -137,14 +192,6 @@ export default function Profile() {
                 >
                     Posts
                 </button>
-                {/* TODO: Add Save Feature
-                <button
-                    onClick={() => setActiveTab("saved")}
-                    className={activeTab === "saved" ? "underline font-bold" : ""}
-                >
-                    Saved
-                </button>
-                */}
                 <button
                     onClick={() => setActiveTab("reposts")}
                     className={activeTab === "reposts" ? "underline font-bold" : ""}
@@ -168,10 +215,6 @@ export default function Profile() {
                         </Link>
                     ))}
                 </div>
-            )}
-
-            {activeTab === "saved" && (
-                <p className="text-center py-8">Saved posts coming soon.</p>
             )}
 
             {activeTab === "reposts" && (

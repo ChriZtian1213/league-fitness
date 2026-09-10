@@ -1,5 +1,6 @@
 import type {Route} from "./+types/home"
 import {Form, Link, useLoaderData} from "react-router"
+import type {PostEntry} from "~/types/post";
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser} from "~/server/user.server";
@@ -186,7 +187,7 @@ export default function Home() {
                 </p>
             )}
 
-            {posts.map((post) => (
+            {posts.map((post: PostEntry) => (
                 <PostCard key={post.id} post={post} currentUserId={user?.id ?? ""} />
             ))}
 

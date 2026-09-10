@@ -37,7 +37,7 @@ export default function CreatePost() {
             <h1 className="font-bold text-3xl p-4">New Post</h1>
 
             <Form method="post" encType="multipart/form-data" className="flex flex-col gap-4 w-full max-w-md px-4">
-                <input type="file" name="image" accept="image/*" required className="text-neutral-200 shado"  />
+                <input type="file" name="image" accept="image/*" required className="text-neutral-200"  />
                 <textarea
                     name="caption"
                     placeholder="Write a caption..."

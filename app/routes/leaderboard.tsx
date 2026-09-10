@@ -27,7 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
     const requestedMetric = url.searchParams.get("metric");
     const metric: LeaderboardMetric =
-        requestedMetric === "heaviest" ? "heaviest" : "volume";
+        requestedMetric === "volume" ? "volume" : "heaviest";
 
     const category = url.searchParams.get("category");
     const muscle = url.searchParams.get("muscle");
@@ -113,8 +113,8 @@ export default function Leaderboard() {
                     <Link to={buildLink(current, {scope: "mutual"})} className={`px-3 py-1 ${scope === "mutual" ? "bg-neutral-500" : ""}`}>Friends</Link>
                 </div>
                 <div className="flex border border-neutral-500 rounded-md overflow-hidden">
-                    <Link to={buildLink(current, {metric: "volume"})} className={`px-3 py-1 ${metric === "volume" ? "bg-neutral-500" : ""}`}>Total Volume</Link>
                     <Link to={buildLink(current, {metric: "heaviest"})} className={`px-3 py-1 ${metric === "heaviest" ? "bg-neutral-500" : ""}`}>Heaviest Lift</Link>
+                    <Link to={buildLink(current, {metric: "volume"})} className={`px-3 py-1 ${metric === "volume" ? "bg-neutral-500" : ""}`}>Total Volume</Link>
                 </div>
             </div>
 
