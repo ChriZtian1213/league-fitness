@@ -3,7 +3,8 @@ import {useState} from "react";
 import {Form, Link, useLoaderData} from "react-router";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
-import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, deleteComment, editComment, editPost} from "~/server/post.server";
+import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, deleteComment, editComment, editPost, deletePost} from "~/server/post.server";
+import {redirect} from "react-router";
 import {getUserById} from "~/server/user.server";
 import {CommentThread} from "~/components/CommentThread";
 
@@ -24,6 +25,16 @@ export async function action({request, params}: Route.ActionArgs) {
     const postId = (params as {postId: string}).postId;
     const formData = await request.formData();
     const intent = formData.get("intent");
+
+    if (intent === "deletePost") {
+        try {
+            await deletePost(userId, postId);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Could not delete post.";
+            return {error: message};
+        }
+        return redirect("/home");
+    }
 
     if (intent === "like") {
         await toggleLike(userId, postId);
@@ -126,6 +137,14 @@ export default function PostDetail() {
                         {post.displayName}
                     </Link>
                     <p>⚆ {timeAgo(post.createdAt)}</p>
+                    {post.isOwnPost && (
+                        <Form method="post">
+                            <input type="hidden" name="intent" value="deletePost" />
+                            <button type="submit" className="text-red-400">
+                                Delete
+                            </button>
+                        </Form>
+                    )}
                 </div>
 
                 <img
