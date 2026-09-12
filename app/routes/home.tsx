@@ -11,6 +11,7 @@ import {
 import {PostCard} from "~/components/PostCard";
 import {CooldownTimer} from "~/components/CooldownTimer";
 import {getUnreadNotificationCount} from "~/server/notification";
+import {getUnreadMessageCount} from "~/server/message.server";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -23,8 +24,9 @@ export async function loader({request}: Route.LoaderArgs) {
     const posts = await getFeed(userId, scope);
     const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
     const unreadCount = await getUnreadNotificationCount(userId);
+    const unreadMessageCount = await getUnreadMessageCount(userId);
 
-    return {user, posts, scope, cooldownSeconds, unreadCount};
+    return {user, posts, scope, cooldownSeconds, unreadCount, unreadMessageCount};
 }
 
 export async function action({request}: Route.ActionArgs) {
@@ -161,7 +163,7 @@ export async function action({request}: Route.ActionArgs) {
 }
 
 export default function Home() {
-    const {cooldownSeconds, user, posts, scope, unreadCount} = useLoaderData<typeof loader>();
+    const {cooldownSeconds, user, posts, scope, unreadCount, unreadMessageCount} = useLoaderData<typeof loader>();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -185,9 +187,16 @@ export default function Home() {
                 <div className="text-center font-bold text-4xl p-3 whitespace-nowrap">
                     League Fitness
                 </div>
-                <Form method="post" action="/logout">
-                    <button type="submit">Logout</button>
-                </Form>
+                <div className="w-16 flex justify-end">
+                    <Link to="/messages" className="relative text-2xl">
+                        ✉️
+                        {unreadMessageCount > 0 && (
+                            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
+                                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                            </span>
+                        )}
+                    </Link>
+                </div>
             </div>
 
             <h2 className="px-4">Welcome back, {user?.displayName}!</h2>

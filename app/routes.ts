@@ -14,4 +14,6 @@ export default [
     route("verify-email", "routes/verify-email.tsx"),
     route("resend-verification", "routes/resend-verification.tsx"),
     route("notifications", "routes/notifications.tsx"),
+    route("messages", "routes/messages.tsx"),
+    route("messages/:userId", "routes/message-thread.tsx"),
 ] satisfies RouteConfig;
