@@ -2,6 +2,7 @@ import { connectDB } from "./db.server";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 import crypto from "crypto";
+import { createNotification } from "~/server/notification";
 
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60s
 
@@ -193,6 +194,13 @@ export async function followUser(userId: string, targetUserId: string): Promise<
         { _id: new ObjectId(targetUserId) },
         { $addToSet: { followerIds: new ObjectId(userId) } }
     );
+
+    const fromUser = await db
+        .collection("users")
+        .findOne({ _id: new ObjectId(userId) }, { projection: { displayName: 1 } });
+    if (fromUser) {
+        await createNotification(targetUserId, userId, fromUser.displayName, "follow");
+    }
 }
 
 export async function unfollowUser(userId: string, targetUserId: string): Promise<void> {

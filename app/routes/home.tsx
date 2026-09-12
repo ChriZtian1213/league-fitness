@@ -9,8 +9,8 @@ import {
     type FeedScope
 } from "~/server/post.server";
 import {PostCard} from "~/components/PostCard";
-import {useState, useEffect} from "react";
 import {CooldownTimer} from "~/components/CooldownTimer";
+import {getUnreadNotificationCount} from "~/server/notification";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -21,9 +21,10 @@ export async function loader({request}: Route.LoaderArgs) {
     const scope: FeedScope = requestedScope === "global" ? "global" : "following";
 
     const posts = await getFeed(userId, scope);
-
     const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
-    return {user, posts, scope, cooldownSeconds};
+    const unreadCount = await getUnreadNotificationCount(userId);
+
+    return {user, posts, scope, cooldownSeconds, unreadCount};
 }
 
 export async function action({request}: Route.ActionArgs) {
@@ -160,7 +161,7 @@ export async function action({request}: Route.ActionArgs) {
 }
 
 export default function Home() {
-    const {cooldownSeconds, user, posts, scope} = useLoaderData<typeof loader>();
+    const {cooldownSeconds, user, posts, scope, unreadCount} = useLoaderData<typeof loader>();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -171,7 +172,16 @@ export default function Home() {
                 </div>
             )}
             <div className="flex items-center justify-between mb-4 px-4">
-                <div className="w-16" />
+                <div className="w-16 flex justify-start">
+                    <Link to="/notifications" className="relative text-2xl">
+                        🔔
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
+                                {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                        )}
+                    </Link>
+                </div>
                 <div className="text-center font-bold text-4xl p-3 whitespace-nowrap">
                     League Fitness
                 </div>

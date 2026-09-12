@@ -13,4 +13,5 @@ export default [
     route("search", "routes/search.tsx"),
     route("verify-email", "routes/verify-email.tsx"),
     route("resend-verification", "routes/resend-verification.tsx"),
+    route("notifications", "routes/notifications.tsx"),
 ] satisfies RouteConfig;

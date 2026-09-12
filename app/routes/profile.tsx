@@ -283,17 +283,16 @@ export default function Profile() {
                                     className="block w-full mt-1 border-b bg-transparent text-neutral-200 p-1"
                                 />
                             </label>
-
-                            <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
-                                Update Password
-                            </button>
-
                             {actionData?.error && (
                                 <p className="text-red-400 text-sm text-center">{actionData.error}</p>
                             )}
                             {actionData?.passwordChanged && (
                                 <p className="text-green-400 text-sm text-center">Password updated!</p>
                             )}
+                            <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
+                                Update Password
+                            </button>
+
                         </Form>
                     )}
                 </div>

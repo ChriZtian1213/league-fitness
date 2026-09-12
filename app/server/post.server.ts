@@ -1,6 +1,7 @@
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
 import {getFollowedObjectIds} from "~/server/user.server";
+import { createNotification } from "~/server/notification";
 
 export type FeedScope = "following" | "global";
 
@@ -96,7 +97,7 @@ export async function toggleLike(userId: string, postId: string) {
 
     const post = await db
         .collection("posts")
-        .findOne({ _id: postObjectId }, { projection: { likedBy: 1 } });
+        .findOne({ _id: postObjectId }, { projection: { likedBy: 1, userId: 1 } });
     if (!post) throw new Error("Post not found");
 
     const alreadyLiked = (post.likedBy ?? []).some((id: ObjectId) => id.equals(userObjectId));
@@ -107,6 +108,16 @@ export async function toggleLike(userId: string, postId: string) {
             ? { $pull: { likedBy: userObjectId } }
             : { $addToSet: { likedBy: userObjectId } }
     );
+
+    if (!alreadyLiked) {
+        const fromUser = await db
+            .collection("users")
+            .findOne({ _id: userObjectId }, { projection: { displayName: 1 } });
+        if (fromUser) {
+            await createNotification(post.userId.toString(), userId, fromUser.displayName, "like", postId);
+        }
+    }
+
 }
 
 export async function addComment(
@@ -117,6 +128,10 @@ export async function addComment(
     parentCommentId: string | null = null
 ) {
     const db = await connectDB();
+    const post = await db
+        .collection("posts")
+        .findOne({ _id: new ObjectId(postId) }, { projection: { userId: 1 } });
+
     await db.collection("posts").updateOne(
         { _id: new ObjectId(postId) },
         {
@@ -133,6 +148,10 @@ export async function addComment(
             },
         }
     );
+
+    if (post){
+        await createNotification(post.userId.toString(), userId, displayName, "comment", postId);
+    }
 }
 
 export async function toggleCommentLike(userId: string, postId: string, commentId: string) {
