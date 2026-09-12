@@ -98,12 +98,12 @@ export default function Profile() {
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
-            <div className="flex items-center mb-4">
-                <div className="flex-1"></div>
-                <div className="flex-1 text-center font-bold text-3xl p-3">
+            <div className="flex items-center justify-between mb-4 px-4">
+                <div className="w-16" />
+                <div className="text-center font-bold text-4xl p-3 whitespace-nowrap">
                     League Fitness
                 </div>
-                <div className="flex-1 flex justify-end">
+                <div className="w-16 flex justify-end">
                     {isOwnProfile && (
                         <Form method="post" action="/logout">
                             <button type="submit">Logout</button>

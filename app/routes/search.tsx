@@ -21,6 +21,9 @@ export default function Search() {
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="font-bold text-4xl flex justify-center items-center p-3">
+                League Fitness
+            </div>
+            <div className="font-bold text-xl flex justify-center items-center p-3">
                 Search
             </div>
 

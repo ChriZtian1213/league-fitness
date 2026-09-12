@@ -144,6 +144,7 @@ export default function PostDetail() {
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex flex-col items-center gap-3 p-4">
                 <div className="flex flex-row gap-4 items-center">
+
                     <Link to={`/profile/${post.userId}`} className="font-bold hover:underline">
                         {post.displayName}
                     </Link>

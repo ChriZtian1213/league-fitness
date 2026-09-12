@@ -168,16 +168,14 @@ export default function Home() {
                     </Form>
                 </div>
             )}
-            <div className="flex items-center mb-4">
-                <div className="flex-1 flex justify-center"></div>
-                <div className="flex-1 text-center font-bold text-3xl p-3">
+            <div className="flex items-center justify-between mb-4 px-4">
+                <div className="w-16" />
+                <div className="text-center font-bold text-4xl p-3 whitespace-nowrap">
                     League Fitness
                 </div>
-                <div className="flex-1 flex justify-end pr-4">
-                    <Form method="post" action="/logout">
-                        <button type="submit">Logout</button>
-                    </Form>
-                </div>
+                <Form method="post" action="/logout">
+                    <button type="submit">Logout</button>
+                </Form>
             </div>
 
             <h2 className="px-4">Welcome back, {user?.displayName}!</h2>

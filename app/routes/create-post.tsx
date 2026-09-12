@@ -61,7 +61,11 @@ export default function CreatePost() {
                     </Form>
                 </div>
             )}
-            <h1 className="font-bold text-3xl p-4">New Post</h1>
+
+            <div className="font-bold text-4xl flex justify-center items-center p-3">
+                League Fitness
+            </div>
+            <h1 className="font-bold text-xl p-4">New Post</h1>
 
             <Form method="post" encType="multipart/form-data" className="flex flex-col gap-4 w-full max-w-md px-4">
                 <input type="file" name="image" accept="image/*" required className="text-neutral-200"  />
