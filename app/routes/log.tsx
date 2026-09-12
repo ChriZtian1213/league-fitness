@@ -45,11 +45,12 @@ export async function loader({request}: Route.LoaderArgs){
 
     const url = new URL(request.url);
     const now = new Date();
+    const todayDateStr = toDateStr(now);
     const year = Number(url.searchParams.get("year")) || now.getFullYear();
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
-    const date = url.searchParams.get("date") ?? toDateStr(now);
+    const date = url.searchParams.get("date") ?? todayDateStr;
 
-    return {user, workouts, exerciseCatalog, loggedDates, year, month, date};
+    return {user, workouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr};
 }
 
 export async function action({request}: Route.ActionArgs){
@@ -102,9 +103,6 @@ function formatLine(w: WorkoutEntry) {
         : `${w.distance} mi in ${w.time}`;
 }
 
-// "Best" set within a same-day, same-exercise group: highest weight, then
-// highest reps as a tiebreaker. Cardio entries (no weight) fall back to
-// longest distance.
 function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
     return entries.reduce((best, curr) => {
         if (best.weight !== undefined && curr.weight !== undefined) {
@@ -119,7 +117,7 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 }
 
 export default function Log(){
-    const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date} = useLoaderData<typeof loader>();
+    const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr} = useLoaderData<typeof loader>();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
@@ -127,7 +125,7 @@ export default function Log(){
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
     const [exercises, setExercises] = useState<Exercise[]>(() => {
         const fromCatalog: Exercise[] = exerciseCatalog
-            .filter((c) => c.category) // skip anything logged before category/muscle existed
+            .filter((c) => c.category)
             .map((c) => ({
                 id: `catalog-${c.category}-${c.muscle ?? "none"}-${c.exercise}`,
                 name: c.exercise,
@@ -188,8 +186,6 @@ export default function Log(){
         });
     }
 
-    // Group the selected day's workouts by exercise name, keeping the best
-    // set per exercise plus the full list for the "show all" expansion.
     const dayWorkouts = workouts.filter((w) => toDateStr(w.createdAt) === date);
     const groupedByExercise = new Map<string, WorkoutEntry[]>();
     for (const w of dayWorkouts) {
@@ -286,11 +282,17 @@ export default function Log(){
                 </div>
 
                 <div className="py-4">
-                    <WorkoutCalendar year={year} month={month} loggedDates={loggedDates} selectedDate={date} />
+                    <WorkoutCalendar
+                        year={year}
+                        month={month}
+                        loggedDates={loggedDates}
+                        selectedDate={date}
+                        today={todayDateStr}
+                    />
                 </div>
 
                 <h2 className="font-bold mt-4 px-4">
-                    {date === toDateStr(new Date()) ? "Today's Logs" : `Logs for ${date}`}
+                    {date === todayDateStr ? "Today's Logs" : `Logs for ${date}`}
                 </h2>
 
                 {groupedByExercise.size === 0 && (

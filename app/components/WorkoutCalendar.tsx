@@ -5,27 +5,22 @@ type Props = {
     month: number; // 1-12
     loggedDates: string[]; // "YYYY-MM-DD" strings
     selectedDate: string | null; // "YYYY-MM-DD" or null
+    today: string; // "YYYY-MM-DD" — computed server-side, single source of truth
 };
 
 function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
-function todayStr() {
-    const now = new Date();
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props) {
+export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}: Props) {
     const loggedSet = new Set(loggedDates);
 
     const firstOfMonth = new Date(year, month - 1, 1);
     const daysInMonth = new Date(year, month, 0).getDate();
     const startWeekday = firstOfMonth.getDay(); // 0 = Sunday
 
-    const today = new Date();
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
-    const todayDate = today.getDate();
+    const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
+    const isCurrentMonth = todayYear === year && todayMonth === month;
 
     const monthLabel = firstOfMonth.toLocaleString("default", {month: "long", year: "numeric"});
 
@@ -69,7 +64,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props)
 
                     const dateStr = `${year}-${pad(month)}-${pad(day)}`;
                     const isLogged = loggedSet.has(dateStr);
-                    const isToday = isCurrentMonth && day === todayDate;
+                    const isToday = isCurrentMonth && day === todayDay;
                     const isSelected = selectedDate === dateStr;
 
                     return (
@@ -88,7 +83,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate}: Props)
                 })}
             </div>
 
-            {selectedDate && selectedDate !== todayStr() && (
+            {selectedDate && selectedDate !== today && (
                 <div className="flex justify-center mt-2">
                     <Link to="/log" className="text-xs text-neutral-400 underline">
                         Clear selection
