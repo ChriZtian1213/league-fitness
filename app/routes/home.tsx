@@ -27,7 +27,17 @@ export async function action({request}: Route.ActionArgs) {
     const formData = await request.formData();
     const intent = formData.get("intent");
 
+    const writeIntents = new Set([
+        "like", "comment", "likeComment", "editComment", "deleteComment",
+        "deletePost", "editPost", "repost", "follow", "unfollow",
+    ]);
 
+    if (writeIntents.has(intent as string)) {
+        const user = await getUserById(userId);
+        if (!user?.emailVerified) {
+            return {error: "Please verify your email to do that."};
+        }
+    }
 
     if (intent === "editPost") {
         const postId = formData.get("postId");
@@ -150,6 +160,14 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
+            {user && !user.emailVerified && (
+                <div className="bg-yellow-700 text-center py-2 text-sm flex flex-col items-center gap-1">
+                    <p>Verify your email to like, comment, and post.</p>
+                    <Form method="post" action="/resend-verification">
+                        <button type="submit" className="underline">Resend verification email</button>
+                    </Form>
+                </div>
+            )}
             <div className="flex items-center mb-4">
                 <div className="flex-1 flex justify-center"></div>
                 <div className="flex-1 text-center font-bold text-3xl p-3">

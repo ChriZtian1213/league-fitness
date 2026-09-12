@@ -26,6 +26,17 @@ export async function action({request, params}: Route.ActionArgs) {
     const formData = await request.formData();
     const intent = formData.get("intent");
 
+    const writeIntents = new Set([
+        "like", "repost", "editPost", "comment", "likeComment", "deleteComment", "editComment",
+    ]);
+
+    if (writeIntents.has(intent as string)) {
+        const user = await getUserById(userId);
+        if (!user?.emailVerified) {
+            return {error: "Please verify your email to do that."};
+        }
+    }
+
     if (intent === "deletePost") {
         try {
             await deletePost(userId, postId);

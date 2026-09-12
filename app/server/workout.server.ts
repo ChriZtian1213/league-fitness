@@ -31,6 +31,16 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
         .collection("workouts")
         .aggregate([
             {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "user",
+                },
+            },
+            { $unwind: "$user" },
+            { $match: { "user.emailVerified": true } },
+            {
                 $group: {
                     _id: { category: "$category", muscle: "$muscle", exercise: "$exercise" },
                 },
@@ -177,9 +187,6 @@ export async function getLeaderboard(
     let pipeline: any[];
 
     if (metric === "heaviest") {
-        // Sort so the heaviest set per user comes first, then take that
-        // document's weight AND exercise name together with $first —
-        // avoids the ambiguity of a bare number with no context.
         pipeline = [
             { $match: match },
             { $sort: { weight: -1, reps: -1 } },
@@ -191,7 +198,6 @@ export async function getLeaderboard(
                 },
             },
             { $sort: { value: -1 } },
-            { $limit: 50 },
         ];
     } else {
         pipeline = [
@@ -203,7 +209,6 @@ export async function getLeaderboard(
                 },
             },
             { $sort: { value: -1 } },
-            { $limit: 50 },
         ];
     }
 
@@ -217,6 +222,8 @@ export async function getLeaderboard(
             },
         },
         { $unwind: "$user" },
+        { $match: { "user.emailVerified": true } },
+        { $limit: 50 },
         {
             $project: {
                 _id: 0,

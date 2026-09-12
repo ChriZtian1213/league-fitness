@@ -1,6 +1,7 @@
 import type { Route } from "./+types/leaderboard";
 import { Link, useLoaderData } from "react-router";
 import { requireUserId } from "~/server/session.server";
+import { getUserById } from "~/server/user.server";
 import {
     getLeaderboard,
     getExerciseCatalog,
@@ -13,6 +14,7 @@ import type {Category} from "~/types/workout";
 
 export async function loader({ request }: Route.LoaderArgs) {
     const userId = await requireUserId(request);
+    const user = await getUserById(userId);
     const url = new URL(request.url);
 
     const requestedPeriod = url.searchParams.get("period");
@@ -63,6 +65,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         leaderboard, period, scope, metric,
         category, muscle, exercise,
         categories, musclesForCategory, exercises: uniqueExercises,
+        isVerified: user?.emailVerified ?? false,
     };
 }
 
@@ -87,6 +90,7 @@ export default function Leaderboard() {
         leaderboard, period, scope, metric,
         category, muscle, exercise,
         categories, musclesForCategory, exercises,
+        isVerified,
     } = useLoaderData<typeof loader>();
 
     const current = {
@@ -99,6 +103,12 @@ export default function Leaderboard() {
             <div className="font-bold text-4xl flex justify-center items-center p-3">
                 Leaderboard
             </div>
+
+            {!isVerified && (
+                <div className="bg-yellow-700 text-center py-2 text-sm mx-4 rounded-md mb-3">
+                    Verify your email to appear on the leaderboard.
+                </div>
+            )}
 
             <div className="flex justify-center gap-4 mb-3">
                 <Link to={buildLink(current, {period: "week"})} className={period === "week" ? "underline font-bold" : ""}>This Week</Link>

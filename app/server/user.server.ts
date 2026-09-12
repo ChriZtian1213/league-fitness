@@ -8,6 +8,7 @@ export interface PublicUser {
     displayName: string;
     username: string;
     email: string;
+    emailVerified: boolean;
     bio?: string;
     profilePicture?: string;
 }
@@ -27,6 +28,7 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
         displayName: user.displayName,
         username: user.username,
         email: user.email,
+        emailVerified: user.emailVerified ?? false,
         bio: user.bio,
         profilePicture: user.profilePicture,
     };
@@ -243,4 +245,20 @@ export async function getMutualFollowObjectIds(userId: string): Promise<ObjectId
     const myFollowerIds = new Set((me?.followerIds ?? []).map((id: ObjectId) => id.toString()));
 
     return following.filter((id) => myFollowerIds.has(id.toString()));
+}
+
+export async function resendVerificationEmail(userId: string): Promise<string | null> {
+    const db = await connectDB();
+    const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+    if (!user || user.emailVerified) return null;
+
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await db.collection("users").updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { verificationToken, verificationExpires } }
+    );
+
+    return verificationToken;
 }

@@ -1,7 +1,7 @@
 import type {Route} from "./+types/log"
+import {useEffect, useState} from "react";
 import {useWorkoutFlow} from "~/features/workoutFlow/useWorkoutFlow";
 import type {WorkoutEntry} from "~/types/workoutEntry";
-import {useState} from "react";
 import type {Exercise} from "~/types/exercise";
 import {CategoryStep} from "~/components/CategoryStep";
 import {MuscleStep} from "~/components/MuscleStep";
@@ -9,9 +9,12 @@ import {ExerciseStep} from "~/components/ExerciseStep";
 import {LogStep} from "~/components/LogStep";
 import {NavBar} from "~/components/NavBar";
 import {WorkoutCalendar} from "~/components/WorkoutCalendar";
-import {requireUserId} from "~/server/session.server";
-import {useFetcher, useLoaderData} from "react-router";
+import {Form, useFetcher, useLoaderData} from "react-router";
 import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
+import {requireUserId} from "~/server/session.server";
+import {getUserById} from "~/server/user.server";
+
+
 
 const HARDCODED_EXERCISES: Exercise[] = [
     {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest"},
@@ -35,6 +38,7 @@ function toDateStr(date: Date) {
 
 export async function loader({request}: Route.LoaderArgs){
     const userId = await requireUserId(request);
+    const user = await getUserById(userId);
     const workouts = await getWorkoutsForUser(userId);
     const exerciseCatalog = await getExerciseCatalog();
     const loggedDates = await getWorkoutDatesForUser(userId);
@@ -45,12 +49,13 @@ export async function loader({request}: Route.LoaderArgs){
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
     const date = url.searchParams.get("date") ?? toDateStr(now);
 
-    return {workouts, exerciseCatalog, loggedDates, year, month, date};
+    return {user, workouts, exerciseCatalog, loggedDates, year, month, date};
 }
 
 export async function action({request}: Route.ActionArgs){
     const userId = await requireUserId(request);
     const formData = await request.formData();
+    const tempId = formData.get("tempId");
 
     const intent = formData.get("intent");
 
@@ -70,7 +75,6 @@ export async function action({request}: Route.ActionArgs){
     const reps = formData.get("reps");
     const distance = formData.get("distance");
     const time = formData.get("time");
-    const tempId = formData.get("tempId");
 
     if (typeof exercise !== "string" || !exercise) {
         return {error: "Missing exercise name."}
@@ -81,7 +85,7 @@ export async function action({request}: Route.ActionArgs){
 
     const workout = await createWorkoutEntry(userId, {
         exercise,
-        category: category as any, // matches your Category type
+        category: category as any,
         muscle: typeof muscle === "string" ? (muscle as any) : undefined,
         weight: typeof weight === "string" && weight ? Number(weight) : undefined,
         reps: typeof reps === "string" && reps ? Number(reps) : undefined,
@@ -115,13 +119,12 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 }
 
 export default function Log(){
-    const {workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date} = useLoaderData<typeof loader>();
+    const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date} = useLoaderData<typeof loader>();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
-
     const [exercises, setExercises] = useState<Exercise[]>(() => {
         const fromCatalog: Exercise[] = exerciseCatalog
             .filter((c) => c.category) // skip anything logged before category/muscle existed
@@ -141,6 +144,18 @@ export default function Log(){
         }
         return merged;
     });
+
+    useEffect(() => {
+        if (fetcher.data?.error && fetcher.data?.tempId) {
+            setWorkouts((prev) => prev.filter((w) => w.id !== fetcher.data.tempId));
+        }
+
+        if (fetcher.data?.workout && fetcher.data?.tempId) {
+            setWorkouts((prev) =>
+                prev.map((w) => (w.id === fetcher.data.tempId ? fetcher.data.workout : w))
+            );
+        }
+    }, [fetcher.data]);
 
     function addWorkout(workout: WorkoutEntry) {
         setWorkouts((prev) => [workout, ...prev])
@@ -196,6 +211,9 @@ export default function Log(){
             <div className="font-bold text-4xl flex justify-center items-center p-3">
                 League Fitness
             </div>
+            {fetcher.data?.error && (
+                <p className="text-red-400 text-center px-4 py-2">{fetcher.data.error}</p>
+            )}
             <div>
                 <div className="flex flex-col items-center">
                     {flow.step === "category" && (

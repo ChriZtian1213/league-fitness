@@ -1,8 +1,18 @@
 import { createCookieSessionStorage, redirect } from "react-router";
+import {getUserById} from "~/server/user.server";
 
 type SessionData = {
     userId: string;
 };
+
+export async function requireVerifiedUser(request: Request): Promise<string> {
+    const userId = await requireUserId(request);
+    const user = await getUserById(userId);
+    if (!user?.emailVerified){
+        throw new Response("Please verify your email to do that.", {status: 403})
+    }
+    return userId;
+}
 
 export const sessionStorage =
     createCookieSessionStorage<SessionData>({
