@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 import crypto from "crypto";
 
+const RESEND_COOLDOWN_MS = 60 * 1000; // 60s
+
 export interface PublicUser {
     id: string;
     displayName: string;
@@ -247,18 +249,45 @@ export async function getMutualFollowObjectIds(userId: string): Promise<ObjectId
     return following.filter((id) => myFollowerIds.has(id.toString()));
 }
 
-export async function resendVerificationEmail(userId: string): Promise<string | null> {
+export async function resendVerificationEmail(userId: string): Promise<
+    { token: string} | {cooldownSecondsRemaining: number } | null
+> {
     const db = await connectDB();
     const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+
     if (!user || user.emailVerified) return null;
+
+    const lastSent: Date | undefined = user.lastVerificationSentAt;
+    if (lastSent){
+        const elapsed = Date.now() - lastSent.getTime();
+        if (elapsed < RESEND_COOLDOWN_MS) {
+            const remaining = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+            return { cooldownSecondsRemaining: remaining}
+        }
+    }
 
     const verificationToken = crypto.randomBytes(32).toString("hex");
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await db.collection("users").updateOne(
         { _id: new ObjectId(userId) },
-        { $set: { verificationToken, verificationExpires } }
+        { $set: { verificationToken, verificationExpires, lastVerificationSentAt: new Date() } },
     );
 
-    return verificationToken;
+    return { token: verificationToken };
+}
+
+export async function getResendCooldownSeconds(userId: string): Promise<number> {
+    const db = await connectDB();
+    const user = await db.collection("users").findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { lastVerificationSentAt: 1 } }
+    );
+
+    const lastSent: Date | undefined = user?.lastVerificationSentAt;
+    if (!lastSent) return 0;
+
+    const elapsed = Date.now() - lastSent.getTime();
+    const remaining = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+    return remaining > 0 ? remaining : 0;
 }

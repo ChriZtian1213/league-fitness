@@ -3,12 +3,14 @@ import {Form, Link, useLoaderData} from "react-router"
 import type {PostEntry} from "~/types/post";
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
-import {getUserById, followUser, unfollowUser} from "~/server/user.server";
+import {getUserById, followUser, unfollowUser, getResendCooldownSeconds} from "~/server/user.server";
 import {
     getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost, editPost,
     type FeedScope
 } from "~/server/post.server";
 import {PostCard} from "~/components/PostCard";
+import {useState, useEffect} from "react";
+import {CooldownTimer} from "~/components/CooldownTimer";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -19,7 +21,9 @@ export async function loader({request}: Route.LoaderArgs) {
     const scope: FeedScope = requestedScope === "global" ? "global" : "following";
 
     const posts = await getFeed(userId, scope);
-    return {user, posts, scope};
+
+    const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
+    return {user, posts, scope, cooldownSeconds};
 }
 
 export async function action({request}: Route.ActionArgs) {
@@ -156,16 +160,14 @@ export async function action({request}: Route.ActionArgs) {
 }
 
 export default function Home() {
-    const {user, posts, scope} = useLoaderData<typeof loader>();
+    const {cooldownSeconds, user, posts, scope} = useLoaderData<typeof loader>();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             {user && !user.emailVerified && (
                 <div className="bg-yellow-700 text-center py-2 text-sm flex flex-col items-center gap-1">
                     <p>Verify your email to like, comment, and post.</p>
-                    <Form method="post" action="/resend-verification">
-                        <button type="submit" className="underline">Resend verification email</button>
-                    </Form>
+                    <CooldownTimer initialSeconds={cooldownSeconds} />
                 </div>
             )}
             <div className="flex items-center justify-between mb-4 px-4">

@@ -3,12 +3,16 @@ import {Form, redirect, useActionData, useLoaderData} from "react-router";
 import {requireUserId, requireVerifiedUser} from "~/server/session.server";
 import {createPost} from "~/server/post.server";
 import {NavBar} from "~/components/NavBar";
-import {getUserById} from "~/server/user.server";
+import {CooldownTimer} from "~/components/CooldownTimer";
+import {getUserById, getResendCooldownSeconds} from "~/server/user.server";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
     const user = await getUserById(userId);
-    return {user};
+    const cooldownSeconds = user && !user.emailVerified
+        ? await getResendCooldownSeconds(userId)
+        : 0;
+    return {user, cooldownSeconds};
 }
 
 export async function action({request}: Route.ActionArgs) {
@@ -48,7 +52,7 @@ export async function action({request}: Route.ActionArgs) {
 }
 
 export default function CreatePost() {
-    const {user} = useLoaderData<typeof loader>();
+    const {user, cooldownSeconds} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
 
     return (
@@ -56,9 +60,7 @@ export default function CreatePost() {
             {user && !user.emailVerified && (
                 <div className="bg-yellow-700 text-center py-2 text-sm flex flex-col items-center gap-1 w-full max-w-md mx-4 rounded-md mb-2">
                     <p>Verify your email to post.</p>
-                    <Form method="post" action="/resend-verification">
-                        <button type="submit" className="underline">Resend verification email</button>
-                    </Form>
+                    <CooldownTimer initialSeconds={cooldownSeconds} />
                 </div>
             )}
 

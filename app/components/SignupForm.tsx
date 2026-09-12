@@ -1,5 +1,6 @@
 import {useState} from "react";
 import { Form } from "react-router";
+import { useNavigation } from "react-router";
 
 type Props = {
     error?: string;
@@ -10,6 +11,9 @@ function slugify(input: string) {
 }
 
 export function SignupForm({ error }: Props) {
+    const navigation = useNavigation();
+    const isSubmitting = navigation.state === "submitting";
+
     const [displayName, setDisplayName] = useState("");
     const [username, setUsername] = useState("");
 
@@ -85,10 +89,11 @@ export function SignupForm({ error }: Props) {
 
             <div className="flex justify-center mt-4">
                 <button
-                    className="border rounded-md px-4 py-2 font-bold bg-green-700"
+                    className="border rounded-md px-4 py-2 font-bold bg-green-700 disabled:opacity-50"
                     type="submit"
+                    disabled={isSubmitting}
                 >
-                    Sign Up
+                    {isSubmitting ? "Signing up..." : "Sign Up"}
                 </button>
             </div>
             <div className="underline flex flex-col items-center justify-center text-red-600">
