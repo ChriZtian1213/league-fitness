@@ -204,7 +204,12 @@ export default function Profile() {
                             type="file"
                             name="profilePicture"
                             accept="image/*"
-                            className="block mt-1 text-sm"
+                            className="block mt-1 text-sm text-neutral-300
+            file:mr-3 file:py-2 file:px-4
+            file:rounded-md file:border file:border-neutral-500
+            file:bg-neutral-700 file:text-neutral-200 file:font-bold
+            file:cursor-pointer
+            hover:file:bg-neutral-600"
                         />
                     </label>
 
