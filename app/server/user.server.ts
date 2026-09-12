@@ -19,6 +19,7 @@ export interface UserSearchResult {
     id: string;
     displayName: string;
     username: string;
+    profilePicture?: string;
 }
 
 export async function getUserById(userId: string): Promise<PublicUser | null> {
@@ -80,13 +81,14 @@ export async function searchUsers(query: string, limit = 20): Promise<UserSearch
         .collection("users")
         .find({ displayName: { $regex: escaped, $options: "i" } })
         .limit(limit)
-        .project({ displayName: 1, username: 1 })
+        .project({ displayName: 1, username: 1, profilePicture: 1 })
         .toArray();
 
     return users.map((u: any) => ({
         id: u._id.toString(),
         displayName: u.displayName,
         username: u.username,
+        profilePicture: u.profilePicture,
     }));
 }
 
@@ -290,4 +292,33 @@ export async function getResendCooldownSeconds(userId: string): Promise<number> 
     const elapsed = Date.now() - lastSent.getTime();
     const remaining = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
     return remaining > 0 ? remaining : 0;
+}
+
+export async function changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+): Promise<void> {
+    const db = await connectDB();
+    const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+
+    if (!user){
+        throw new Error("User not found.");
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+        throw new Error("Incorrect current password.");
+    }
+
+    if (newPassword.length < 8){
+        throw new Error("New password must be at least 8 characters.");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await db.collection("users").updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { password: hashedPassword } }
+    );
 }

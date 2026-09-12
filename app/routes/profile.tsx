@@ -1,6 +1,6 @@
 import type { Route } from "./+types/profile";
-import {Form, Link, useLoaderData} from "react-router";
-import {useState} from "react";
+import {Form, Link, useActionData, useLoaderData} from "react-router";
+import {useState, useEffect} from "react";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
 import {
@@ -11,8 +11,10 @@ import {
     getFollowingCount,
     isFollowing,
     updateProfile,
+    changePassword
 } from "~/server/user.server";
 import {getPostsByUser, getPostCount, getRepostedPostsByUser} from "~/server/post.server";
+
 
 export async function loader({request, params}: Route.LoaderArgs) {
     const viewerId = await requireUserId(request);
@@ -45,6 +47,32 @@ export async function action({request, params}: Route.ActionArgs) {
     const formData = await request.formData();
     const intent = formData.get("intent");
     const targetUserId = params.userId ?? viewerId;
+
+    if (intent === "changePassword") {
+        const currentPassword = formData.get("currentPassword");
+        const newPassword = formData.get("newPassword");
+        const confirmNewPassword = formData.get("confirmNewPassword");
+
+        if (
+            typeof currentPassword !== "string" ||
+            typeof newPassword !== "string" ||
+            typeof confirmNewPassword !== "string"
+        ) {
+            return {error: "Invalid form data."};
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            return {error: "New passwords do not match."};
+        }
+
+        try {
+            await changePassword(viewerId, currentPassword, newPassword);
+            return {ok: true, passwordChanged: true};
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Could not change password.";
+            return {error: message};
+        }
+    }
 
     if (intent === "follow") {
         await followUser(viewerId, targetUserId);
@@ -92,9 +120,17 @@ export default function Profile() {
         user, posts, reposts, postCount, followerCount, followingCount,
         isOwnProfile, viewerIsFollowing,
     } = useLoaderData<typeof loader>();
+    const actionData = useActionData<typeof action>();
 
     const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts">("posts");
     const [isEditing, setIsEditing] = useState(false);
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+    useEffect(() => {
+        if (actionData?.passwordChanged) {
+            setShowPasswordForm(false);
+        }
+    }, [actionData]);
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -159,7 +195,6 @@ export default function Profile() {
                     method="post"
                     encType="multipart/form-data"
                     className="flex flex-col gap-3 max-w-md mx-auto px-4 pb-4"
-                    onSubmit={() => setIsEditing(false)}
                 >
                     <input type="hidden" name="intent" value="editProfile" />
 
@@ -198,6 +233,70 @@ export default function Profile() {
                         Save Changes
                     </button>
                 </Form>
+            )}
+
+            {isOwnProfile && isEditing && (
+                <div className="max-w-md mx-auto px-4 pb-4">
+                    <button
+                        type="button"
+                        onClick={() => setShowPasswordForm((v) => !v)}
+                        className="text-sm text-blue-400 underline mb-2"
+                    >
+                        {showPasswordForm ? "Cancel password change" : "Change password"}
+                    </button>
+
+                    {showPasswordForm && (
+                        <Form
+                            method="post"
+                            className="flex flex-col gap-3"
+                        >
+                            <input type="hidden" name="intent" value="changePassword" />
+
+                            <label className="text-sm text-neutral-400">
+                                Current password
+                                <input
+                                    name="currentPassword"
+                                    type="password"
+                                    required
+                                    className="block w-full mt-1 border-b bg-transparent text-neutral-200 p-1"
+                                />
+                            </label>
+
+                            <label className="text-sm text-neutral-400">
+                                New password
+                                <input
+                                    name="newPassword"
+                                    type="password"
+                                    required
+                                    minLength={8}
+                                    className="block w-full mt-1 border-b bg-transparent text-neutral-200 p-1"
+                                />
+                            </label>
+
+                            <label className="text-sm text-neutral-400">
+                                Confirm new password
+                                <input
+                                    name="confirmNewPassword"
+                                    type="password"
+                                    required
+                                    minLength={8}
+                                    className="block w-full mt-1 border-b bg-transparent text-neutral-200 p-1"
+                                />
+                            </label>
+
+                            <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
+                                Update Password
+                            </button>
+
+                            {actionData?.error && (
+                                <p className="text-red-400 text-sm text-center">{actionData.error}</p>
+                            )}
+                            {actionData?.passwordChanged && (
+                                <p className="text-green-400 text-sm text-center">Password updated!</p>
+                            )}
+                        </Form>
+                    )}
+                </div>
             )}
 
             <div className="flex flex-row gap-4 pb-4 justify-center text-xl border-b border-black">

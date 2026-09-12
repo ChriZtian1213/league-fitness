@@ -49,7 +49,7 @@ export default function Search() {
                         className="flex items-center gap-3 w-full max-w-md border-b border-neutral-600 py-2"
                     >
                         <img
-                            src="/favicon.ico"
+                            src={user.profilePicture || "/favicon.ico"}
                             alt={`${user.displayName}'s profile picture`}
                             className="w-10 h-10 rounded-full border border-black"
                         />
