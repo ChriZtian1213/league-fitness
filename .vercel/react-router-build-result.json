@@ -19,7 +19,9 @@
       "routes/logout": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/create-post": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/post": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/search": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+      "routes/search": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/verify-email": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/resend-verification": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
     },
     "routes": {
       "root": {
@@ -117,6 +119,24 @@
         "config": {
           "runtime": "nodejs"
         }
+      },
+      "routes/verify-email": {
+        "id": "routes/verify-email",
+        "parentId": "root",
+        "file": "app/routes/verify-email.tsx",
+        "path": "verify-email",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/resend-verification": {
+        "id": "routes/resend-verification",
+        "parentId": "root",
+        "file": "app/routes/resend-verification.tsx",
+        "path": "resend-verification",
+        "config": {
+          "runtime": "nodejs"
+        }
       }
     }
   },
@@ -198,6 +218,18 @@
         "parentId": "root",
         "file": "routes/search.tsx",
         "path": "search"
+      },
+      "routes/verify-email": {
+        "id": "routes/verify-email",
+        "parentId": "root",
+        "file": "routes/verify-email.tsx",
+        "path": "verify-email"
+      },
+      "routes/resend-verification": {
+        "id": "routes/resend-verification",
+        "parentId": "root",
+        "file": "routes/resend-verification.tsx",
+        "path": "resend-verification"
       }
     },
     "routeDiscovery": {
@@ -255,6 +287,14 @@
           {
             "file": "routes/search.tsx",
             "path": "search"
+          },
+          {
+            "file": "routes/verify-email.tsx",
+            "path": "verify-email"
+          },
+          {
+            "file": "routes/resend-verification.tsx",
+            "path": "resend-verification"
           }
         ]
       }
