@@ -2,17 +2,19 @@ import { connectDB } from "./db.server";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 
-export interface UserSearchResult {
-    id: string;
-    displayName: string;
-}
-
 export interface PublicUser {
     id: string;
     displayName: string;
+    username: string;
     email: string;
     bio?: string;
     profilePicture?: string;
+}
+
+export interface UserSearchResult {
+    id: string;
+    displayName: string;
+    username: string;
 }
 
 export async function getUserById(userId: string): Promise<PublicUser | null> {
@@ -22,6 +24,7 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
     return {
         id: user._id.toString(),
         displayName: user.displayName,
+        username: user.username,
         email: user.email,
         bio: user.bio,
         profilePicture: user.profilePicture,
@@ -63,17 +66,26 @@ export async function searchUsers(query: string, limit = 20): Promise<UserSearch
         .collection("users")
         .find({ displayName: { $regex: escaped, $options: "i" } })
         .limit(limit)
-        .project({ displayName: 1 })
+        .project({ displayName: 1, username: 1 })
         .toArray();
 
     return users.map((u: any) => ({
         id: u._id.toString(),
         displayName: u.displayName,
+        username: u.username,
     }));
+}
+
+// Turns a display name into a lowercase, alphanumeric-only username
+// suggestion. Purely cosmetic pre-fill — the server still validates and
+// checks uniqueness independently of whatever the client sends.
+export function slugifyUsername(input: string): string {
+    return input.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20);
 }
 
 export interface CreateUserInput {
     displayName: string;
+    username: string;
     email: string;
     password: string;
 }
@@ -81,18 +93,29 @@ export interface CreateUserInput {
 export async function createUser(data: CreateUserInput) {
     const db = await connectDB();
 
-    const existingUser = await db.collection("users").findOne({
-        email: data.email,
-    });
+    const username = slugifyUsername(data.username);
 
-    if (existingUser) {
+    if (!username) {
+        throw new Error("Username must contain at least one letter or number.");
+    }
+
+    const [existingEmail, existingUsername] = await Promise.all([
+        db.collection("users").findOne({ email: data.email }),
+        db.collection("users").findOne({ username }),
+    ]);
+
+    if (existingEmail) {
         throw new Error("Email already exists.");
+    }
+    if (existingUsername) {
+        throw new Error("That username is already taken.");
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
     const result = await db.collection("users").insertOne({
         displayName: data.displayName,
+        username,
         email: data.email,
         password: hashedPassword,
         friendIds: [],
@@ -107,32 +130,16 @@ export interface LoginInput {
     password: string;
 }
 
-export async function verifyLogin(
-    data: LoginInput
-): Promise<string | null> {
+export async function verifyLogin(data: LoginInput): Promise<string | null> {
     const db = await connectDB();
 
-    const user = await db.collection("users").findOne({
-        email: data.email,
-    });
-
-    if (!user) {
-        return null;
-    }
+    const user = await db.collection("users").findOne({ email: data.email });
+    if (!user) return null;
 
     const isValid = await bcrypt.compare(data.password, user.password);
-
-    if (!isValid) {
-        return null;
-    }
+    if (!isValid) return null;
 
     return user._id.toString();
-}
-
-export interface PublicUser {
-    id: string;
-    displayName: string;
-    email: string;
 }
 
 export async function followUser(userId: string, targetUserId: string): Promise<void> {
@@ -172,7 +179,6 @@ export async function isFollowing(viewerId: string, targetUserId: string): Promi
     return (target?.followerIds ?? []).some((id: ObjectId) => id.equals(new ObjectId(viewerId)));
 }
 
-// People this user follows (their "following" list).
 export async function getFollowedObjectIds(userId: string): Promise<ObjectId[]> {
     const db = await connectDB();
     const userObjectId = new ObjectId(userId);
@@ -186,7 +192,6 @@ export async function getFollowedObjectIds(userId: string): Promise<ObjectId[]> 
     return followedUsers.map((u: any) => u._id);
 }
 
-// Mutual follows: people this user follows AND who follow this user back.
 export async function getMutualFollowObjectIds(userId: string): Promise<ObjectId[]> {
     const db = await connectDB();
     const userObjectId = new ObjectId(userId);

@@ -36,17 +36,24 @@ export async function action({request} : Route.ActionArgs){
 
     if (intent === "signup"){
         const displayName = formData.get("displayName");
+        const username = formData.get("username");
         const email = formData.get("email");
         const password = formData.get("password");
         const confirmPassword = formData.get("confirmPassword");
 
         if (
             typeof displayName !== "string" ||
+            typeof username !== "string" ||
             typeof email !== "string" ||
             typeof password !== "string" ||
             typeof confirmPassword !== "string"
         ){
-        return {intent: "signup", error: "Invalid form data."};
+            return {intent: "signup", error: "Invalid form data."};
+        }
+
+        const EMAIL_REGEX  = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!EMAIL_REGEX.test(email)) {
+            return {intent: "signup", error: "Invalid email address."};
         }
 
         if (password !== confirmPassword) {
@@ -54,7 +61,7 @@ export async function action({request} : Route.ActionArgs){
         }
 
         try {
-            const userId = await createUser({displayName, email, password});
+            const userId = await createUser({displayName, username, email, password});
             return createUserSession(userId, "/home");
         } catch (err){
             const message =
@@ -80,7 +87,21 @@ export default function Welcome() {
             </div>
 
             <div className="flex flex-col items-center pt-5 ">
-                <div className="bg-neutral-600 rounded-lg p-6 min-h-70 w-full max-w-md">
+                <div className="flex mb-4 w-32">
+                    <button
+                        className={`flex-1 py-2 ${isSignup ? "text-neutral-400" : "border-b-2 border-blue-500 text-white"}`}
+                        onClick={() => setIsSignup(false)}
+                    >
+                        Log In
+                    </button>
+                    <button
+                        className={`flex-1 py-2 ${isSignup ? "border-b-2 border-blue-500 text-white" : "text-neutral-400"}`}
+                        onClick={() => setIsSignup(true)}
+                    >
+                        Sign Up
+                    </button>
+                </div>
+                <div className="bg-neutral-600 rounded-lg p-6 h-[560px] w-full max-w-md flex flex-col">
                     {isSignup ? (
                         <SignupForm
                             error={
@@ -99,15 +120,6 @@ export default function Welcome() {
                         />
                     )}
                 </div>
-
-                <button
-                    className="text-blue-600 mt-2"
-                    onClick={() => setIsSignup(!isSignup)}
-                >
-                    {isSignup
-                        ? "Already have an account?"
-                        : "Need an account?"}
-                </button>
             </div>
         </div>
     );

@@ -1,0 +1,268 @@
+{
+  "buildManifest": {
+    "serverBundles": {
+      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
+        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    },
+    "routeIdToServerBundleId": {
+      "routes/welcome": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "own-profile": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/profile": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/log": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/leaderboard": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/logout": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/create-post": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/post": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/search": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "app/root.tsx",
+        "path": "",
+        "config": {}
+      },
+      "routes/welcome": {
+        "id": "routes/welcome",
+        "parentId": "root",
+        "file": "app/routes/welcome.tsx",
+        "index": true,
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "own-profile": {
+        "id": "own-profile",
+        "parentId": "root",
+        "file": "app/routes/profile.tsx",
+        "path": "profile",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/profile": {
+        "id": "routes/profile",
+        "parentId": "root",
+        "file": "app/routes/profile.tsx",
+        "path": "profile/:userId",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "root",
+        "file": "app/routes/home.tsx",
+        "path": "home",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/log": {
+        "id": "routes/log",
+        "parentId": "root",
+        "file": "app/routes/log.tsx",
+        "path": "log",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/leaderboard": {
+        "id": "routes/leaderboard",
+        "parentId": "root",
+        "file": "app/routes/leaderboard.tsx",
+        "path": "leaderboard",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/logout": {
+        "id": "routes/logout",
+        "parentId": "root",
+        "file": "app/routes/logout.tsx",
+        "path": "logout",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/create-post": {
+        "id": "routes/create-post",
+        "parentId": "root",
+        "file": "app/routes/create-post.tsx",
+        "path": "create-post",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/post": {
+        "id": "routes/post",
+        "parentId": "root",
+        "file": "app/routes/post.tsx",
+        "path": "post/:postId",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/search": {
+        "id": "routes/search",
+        "parentId": "root",
+        "file": "app/routes/search.tsx",
+        "path": "search",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    }
+  },
+  "reactRouterConfig": {
+    "appDirectory": "C:/Users/Christian/WebstormProjects/LeagueFitness/my-react-router-app/app",
+    "basename": "/",
+    "buildDirectory": "C:/Users/Christian/WebstormProjects/LeagueFitness/my-react-router-app/build",
+    "future": {
+      "unstable_optimizeDeps": false,
+      "v8_passThroughRequests": true,
+      "v8_trailingSlashAwareDataRequests": true,
+      "unstable_previewServerPrerendering": false,
+      "v8_middleware": true,
+      "v8_splitRouteModules": true,
+      "v8_viteEnvironmentApi": true
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "routes/welcome": {
+        "id": "routes/welcome",
+        "parentId": "root",
+        "file": "routes/welcome.tsx",
+        "index": true
+      },
+      "own-profile": {
+        "id": "own-profile",
+        "parentId": "root",
+        "file": "routes/profile.tsx",
+        "path": "profile"
+      },
+      "routes/profile": {
+        "id": "routes/profile",
+        "parentId": "root",
+        "file": "routes/profile.tsx",
+        "path": "profile/:userId"
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "root",
+        "file": "routes/home.tsx",
+        "path": "home"
+      },
+      "routes/log": {
+        "id": "routes/log",
+        "parentId": "root",
+        "file": "routes/log.tsx",
+        "path": "log"
+      },
+      "routes/leaderboard": {
+        "id": "routes/leaderboard",
+        "parentId": "root",
+        "file": "routes/leaderboard.tsx",
+        "path": "leaderboard"
+      },
+      "routes/logout": {
+        "id": "routes/logout",
+        "parentId": "root",
+        "file": "routes/logout.tsx",
+        "path": "logout"
+      },
+      "routes/create-post": {
+        "id": "routes/create-post",
+        "parentId": "root",
+        "file": "routes/create-post.tsx",
+        "path": "create-post"
+      },
+      "routes/post": {
+        "id": "routes/post",
+        "parentId": "root",
+        "file": "routes/post.tsx",
+        "path": "post/:postId"
+      },
+      "routes/search": {
+        "id": "routes/search",
+        "parentId": "root",
+        "file": "routes/search.tsx",
+        "path": "search"
+      }
+    },
+    "routeDiscovery": {
+      "mode": "lazy",
+      "manifestPath": "/__manifest"
+    },
+    "serverBuildFile": "index.js",
+    "serverModuleFormat": "esm",
+    "ssr": true,
+    "subResourceIntegrity": false,
+    "allowedActionOrigins": false,
+    "unstable_routeConfig": [
+      {
+        "id": "root",
+        "path": "",
+        "file": "root.tsx",
+        "children": [
+          {
+            "file": "routes/welcome.tsx",
+            "index": true
+          },
+          {
+            "file": "routes/profile.tsx",
+            "path": "profile",
+            "id": "own-profile"
+          },
+          {
+            "file": "routes/profile.tsx",
+            "path": "profile/:userId"
+          },
+          {
+            "file": "routes/home.tsx",
+            "path": "home"
+          },
+          {
+            "file": "routes/log.tsx",
+            "path": "log"
+          },
+          {
+            "file": "routes/leaderboard.tsx",
+            "path": "leaderboard"
+          },
+          {
+            "file": "routes/logout.tsx",
+            "path": "logout"
+          },
+          {
+            "file": "routes/create-post.tsx",
+            "path": "create-post"
+          },
+          {
+            "file": "routes/post.tsx",
+            "path": "post/:postId"
+          },
+          {
+            "file": "routes/search.tsx",
+            "path": "search"
+          }
+        ]
+      }
+    ]
+  },
+  "viteConfig": {
+    "build": {
+      "assetsDir": "assets"
+    }
+  }
+}

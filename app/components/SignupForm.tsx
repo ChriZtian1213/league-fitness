@@ -1,18 +1,26 @@
+import {useState} from "react";
 import { Form } from "react-router";
 
 type Props = {
     error?: string;
 };
 
+function slugify(input: string) {
+    return input.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20);
+}
+
 export function SignupForm({ error }: Props) {
+    const [displayName, setDisplayName] = useState("");
+    const [username, setUsername] = useState("");
+
     return (
         <Form
             method="post"
-            className="flex flex-col gap-4 min-h-100"
+            className="flex flex-col gap-4 flex-1"
         >
             <input type="hidden" name="intent" value="signup" />
 
-            <p className="flex justify-center pb-2">
+            <p className="flex justify-center pb-2 font-bold">
                 Create an account to start logging!
             </p>
 
@@ -22,8 +30,27 @@ export function SignupForm({ error }: Props) {
                     className="border-b text-neutral-200"
                     name="displayName"
                     type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
                     required
                 />
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-center">
+                    <label>Username:</label>
+                </div>
+                <input
+                    className="border-b text-neutral-200"
+                    name="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(slugify(e.target.value))}
+                    required
+                />
+                <p className="text-xs text-neutral-400">
+                    This is your unique handle and cannot be changed!
+                </p>
             </div>
 
             <div className="flex flex-col gap-1">
@@ -58,7 +85,7 @@ export function SignupForm({ error }: Props) {
 
             <div className="flex justify-center mt-4">
                 <button
-                    className="border rounded-md px-4 py-2 font-bold"
+                    className="border rounded-md px-4 py-2 font-bold bg-green-700"
                     type="submit"
                 >
                     Sign Up

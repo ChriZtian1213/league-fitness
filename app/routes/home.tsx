@@ -27,6 +27,8 @@ export async function action({request}: Route.ActionArgs) {
     const formData = await request.formData();
     const intent = formData.get("intent");
 
+
+
     if (intent === "editPost") {
         const postId = formData.get("postId");
         const caption = formData.get("caption");

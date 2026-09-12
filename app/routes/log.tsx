@@ -13,6 +13,18 @@ import {requireUserId} from "~/server/session.server";
 import {useFetcher, useLoaderData} from "react-router";
 import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
 
+const HARDCODED_EXERCISES: Exercise[] = [
+    {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest"},
+    {id: "2", name: "Cable Triceps Pushdown", category: "upper", muscle: "triceps"},
+    {id: "3", name: "Dumbbell Shoulder Press", category: "upper", muscle: "shoulders"},
+    {id: "4", name: "Cable Curl", category: "upper", muscle: "biceps"},
+    {id: "5", name: "Hip Thrust", category: "lower", muscle: "glutes"},
+    {id: "6", name: "Machine Leg Curl", category: "lower", muscle: "hamstrings"},
+    {id: "7", name: "Machine Leg Extension", category: "lower", muscle: "quads"},
+    {id: "8", name: "Calve Raise", category: "lower", muscle: "calves"},
+    {id: "9", name: "Run", category: "cardio"},
+];
+
 function toDateStr(date: Date) {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -109,17 +121,26 @@ export default function Log(){
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
-    const [exercises, setExercises] = useState<Exercise[]>([
-        {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest"},
-        {id: "2", name: "Tricep Push Down", category: "upper", muscle: "triceps"},
-        {id: "3", name: "Shoulder Press", category: "upper", muscle: "shoulders"},
-        {id: "4", name: "Curl", category: "upper", muscle: "biceps"},
-        {id: "5", name: "Hip Thrust", category: "lower", muscle: "glutes"},
-        {id: "6", name: "Leg Curl", category: "lower", muscle: "hamstrings"},
-        {id: "7", name: "Leg Extension", category: "lower", muscle: "quads"},
-        {id: "8", name: "Calve Raise", category: "lower", muscle: "calves"},
-        {id: "9", name: "Run", category: "cardio"},
-    ])
+
+    const [exercises, setExercises] = useState<Exercise[]>(() => {
+        const fromCatalog: Exercise[] = exerciseCatalog
+            .filter((c) => c.category) // skip anything logged before category/muscle existed
+            .map((c) => ({
+                id: `catalog-${c.category}-${c.muscle ?? "none"}-${c.exercise}`,
+                name: c.exercise,
+                category: c.category as Exercise["category"],
+                muscle: c.muscle ?? undefined,
+            }));
+
+        const merged = [...HARDCODED_EXERCISES];
+        for (const entry of fromCatalog) {
+            const alreadyExists = merged.some(
+                (e) => e.name.toLowerCase() === entry.name.toLowerCase() && e.category === entry.category
+            );
+            if (!alreadyExists) merged.push(entry);
+        }
+        return merged;
+    });
 
     function addWorkout(workout: WorkoutEntry) {
         setWorkouts((prev) => [workout, ...prev])

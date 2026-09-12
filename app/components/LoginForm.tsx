@@ -8,11 +8,11 @@ export function LoginForm({ error }: Props) {
     return (
         <Form
             method="post"
-            className="flex flex-col gap-4 min-h-100"
+            className="flex flex-col gap-4 flex-1 justify-center"
         >
             <input type="hidden" name="intent" value="login" />
 
-            <p className="flex justify-center pb-2">Lets get you signed in!</p>
+            <p className="flex justify-center pb-2 font-bold">Lets get you signed in!</p>
 
             <div className="flex flex-col gap-1">
                 <label>Email:</label>
@@ -33,9 +33,9 @@ export function LoginForm({ error }: Props) {
                 />
             </div>
 
-            <div className="flex justify-center mt-4 text-green-600">
+            <div className="flex justify-center mt-4">
                 <button
-                    className="border rounded-md px-4 py-2 font-bold"
+                    className="border rounded-md px-4 py-2 font-bold bg-green-700"
                     type="submit"
                 >
                     Sign In

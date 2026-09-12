@@ -57,10 +57,15 @@ export async function action({request, params}: Route.ActionArgs) {
     }
 
     if (intent === "editProfile") {
+        const displayName = formData.get("displayName");
         const bio = formData.get("bio");
         const image = formData.get("profilePicture");
 
-        const update: {bio?: string; profilePicture?: string} = {};
+        const update: {displayName?:string; bio?: string; profilePicture?: string} = {};
+
+        if (typeof displayName === "string" && displayName.trim()){
+            update.displayName = displayName.trim();
+        }
 
         if (typeof bio === "string") {
             update.bio = bio.trim();
@@ -115,6 +120,7 @@ export default function Profile() {
                 />
                 <div className="flex flex-col p-8">
                     <p className="text-3xl font-bold">{user?.displayName}</p>
+                    <p className="text-sm text-neutral-400">@{user?.username}</p>
                     {user?.bio && !isEditing && (
                         <p className="text-sm text-neutral-300 mt-1 max-w-xs">{user.bio}</p>
                     )}
