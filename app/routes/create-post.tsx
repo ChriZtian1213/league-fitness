@@ -1,5 +1,5 @@
 import type {Route} from "./+types/create-post"
-import {Form, redirect, useActionData, useLoaderData} from "react-router";
+import {Form, redirect, useActionData, useLoaderData, useNavigation} from "react-router";
 import {requireUserId, requireVerifiedUser} from "~/server/session.server";
 import {createPost} from "~/server/post.server";
 import {NavBar} from "~/components/NavBar";
@@ -21,7 +21,7 @@ export async function action({request}: Route.ActionArgs) {
         userId = await requireVerifiedUser(request);
     } catch (err) {
         if (err instanceof Response && err.status >= 300 && err.status < 400) {
-            throw err; // real redirect (e.g. not logged in) — let it through
+            throw err;
         }
         return {error: "Please verify your email before posting."};
     }
@@ -54,6 +54,8 @@ export async function action({request}: Route.ActionArgs) {
 export default function CreatePost() {
     const {user, cooldownSeconds} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
+    const navigation = useNavigation();
+    const isSubmitting = navigation.state === "submitting";
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24 flex flex-col items-center">
@@ -77,8 +79,12 @@ export default function CreatePost() {
                     className="border rounded-md p-2 bg-transparent text-neutral-200"
                     rows={3}
                 />
-                <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
-                    Share
+                <button
+                    type="submit"
+                    className="border rounded-md px-4 py-2 font-bold bg-green-700 disabled:opacity-50"
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? "Sharing..." : "Share"}
                 </button>
                 {actionData?.error && (
                     <p className="text-red-400 text-center">{actionData.error}</p>

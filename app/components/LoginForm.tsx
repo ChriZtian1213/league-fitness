@@ -1,10 +1,13 @@
-import { Form } from "react-router";
+import { Form, useNavigation } from "react-router";
 
 type Props = {
     error?: string;
 };
 
 export function LoginForm({ error }: Props) {
+    const navigation = useNavigation();
+    const isSubmitting = navigation.state === "submitting";
+
     return (
         <Form
             method="post"
@@ -12,7 +15,7 @@ export function LoginForm({ error }: Props) {
         >
             <input type="hidden" name="intent" value="login" />
 
-            <p className="flex justify-center pb-2 font-bold">Lets get you signed in!</p>
+            <p className="flex justify-center pb-2">Lets get you signed in!</p>
 
             <div className="flex flex-col gap-1">
                 <label>Email:</label>
@@ -35,10 +38,11 @@ export function LoginForm({ error }: Props) {
 
             <div className="flex justify-center mt-4">
                 <button
-                    className="border rounded-md px-4 py-2 font-bold bg-green-700"
+                    className="border rounded-md px-4 py-2 font-bold bg-green-700 disabled:opacity-50"
                     type="submit"
+                    disabled={isSubmitting}
                 >
-                    Sign In
+                    {isSubmitting ? "Signing in..." : "Sign In"}
                 </button>
             </div>
             <div className="underline flex flex-col items-center justify-center text-red-600">
