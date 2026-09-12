@@ -174,6 +174,15 @@ export default function Profile() {
                     </label>
 
                     <label className="text-sm text-neutral-400">
+                        Display name
+                        <input
+                            name="displayName"
+                            defaultValue={user?.displayName ?? ""}
+                            className="block w-full mt-1 border-b bg-transparent text-neutral-200 p-1"
+                        />
+                    </label>
+
+                    <label className="text-sm text-neutral-400">
                         Bio
                         <textarea
                             name="bio"
