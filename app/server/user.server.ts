@@ -1,6 +1,7 @@
 import { connectDB } from "./db.server";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
+import crypto from "crypto";
 
 export interface PublicUser {
     id: string;
@@ -32,6 +33,7 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
 }
 
 export interface UpdateProfileInput {
+    displayName?: string;
     bio?: string;
     profilePicture?: string;
 }
@@ -40,6 +42,14 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
     const db = await connectDB();
 
     const update: Record<string, any> = {};
+
+    if (data.displayName !== undefined) {
+        const trimmed = data.displayName.trim();
+        if (!trimmed) {
+            throw new Error("Display name cannot be empty.");
+        }
+        update.displayName = trimmed;
+    }
     if (data.bio !== undefined) update.bio = data.bio;
     if (data.profilePicture !== undefined) update.profilePicture = data.profilePicture;
 
@@ -112,6 +122,8 @@ export async function createUser(data: CreateUserInput) {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const result = await db.collection("users").insertOne({
         displayName: data.displayName,
@@ -119,10 +131,16 @@ export async function createUser(data: CreateUserInput) {
         email: data.email,
         password: hashedPassword,
         friendIds: [],
+        emailVerified: false,
+        verificationToken,
+        verificationExpires,
         createdAt: new Date(),
     });
 
-    return result.insertedId.toString();
+    return {
+        userId: result.insertedId.toString(),
+        verificationToken
+    };
 }
 
 export interface LoginInput {
@@ -140,6 +158,27 @@ export async function verifyLogin(data: LoginInput): Promise<string | null> {
     if (!isValid) return null;
 
     return user._id.toString();
+}
+
+export async function verifyEmailToken(token: string): Promise<boolean> {
+    const db = await connectDB();
+
+    const user = await db.collection("users").findOne({
+        verificationToken: token,
+        verificationExpires: { $gt: new Date() },
+    });
+
+    if (!user) return false;
+
+    await db.collection("users").updateOne(
+        { _id: user._id },
+        {
+            $set: { emailVerified: true },
+            $unset: { verificationToken: "", verificationExpires: "" },
+        }
+    );
+
+    return true;
 }
 
 export async function followUser(userId: string, targetUserId: string): Promise<void> {

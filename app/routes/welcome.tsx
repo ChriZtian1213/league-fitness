@@ -5,6 +5,7 @@ import { LoginForm } from '~/components/LoginForm'
 import { SignupForm } from "~/components/SignupForm";
 import {createUser, verifyLogin} from "~/server/user.server";
 import {createUserSession} from "~/server/session.server";
+import {sendVerificationEmail} from "~/server/email.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -61,7 +62,11 @@ export async function action({request} : Route.ActionArgs){
         }
 
         try {
-            const userId = await createUser({displayName, username, email, password});
+            const {userId, verificationToken} = await createUser({displayName, username, email, password});
+            const url = new URL(request.url);
+            const verifyUrl = `${url.origin}/verify-email?token=${verificationToken}`;
+            await sendVerificationEmail(email, verifyUrl);
+
             return createUserSession(userId, "/home");
         } catch (err){
             const message =

@@ -11,4 +11,5 @@ export default [
     route("create-post", "routes/create-post.tsx"),
     route("post/:postId", "routes/post.tsx"),
     route("search", "routes/search.tsx"),
+    route("verify-email", "routes/verify-email.tsx"),
 ] satisfies RouteConfig;
