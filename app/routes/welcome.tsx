@@ -4,14 +4,23 @@ import {useActionData} from "react-router";
 import { LoginForm } from '~/components/LoginForm'
 import { SignupForm } from "~/components/SignupForm";
 import {createUser, verifyLogin} from "~/server/user.server";
-import {createUserSession} from "~/server/session.server";
+import {createUserSession, getUserId} from "~/server/session.server";
 import {sendVerificationEmail} from "~/server/email.server";
+import {redirect} from "react-router";
 
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
     { name: "description", content: "Welcome to React Router!" },
   ];
+}
+
+export async function loader({request}: Route.LoaderArgs){
+    const userId = await getUserId(request);
+    if (userId) {
+        throw redirect("/home");
+    }
+    return null;
 }
 
 export async function action({request} : Route.ActionArgs){
