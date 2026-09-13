@@ -13,6 +13,7 @@ export interface CommentData {
     parentCommentId: string | null;
     edited: boolean;
     editedAt: Date | null;
+
 }
 
 type Props = {
@@ -20,11 +21,31 @@ type Props = {
     comments: CommentData[];
     isOwnPost: boolean;
     currentUserId: string;
+    activeReplyId?: string | null;
+    activeEditId?: string | null;
+    onReplyingChange?: (replyingTo: string | null) => void;
+    onEditingChange?: (editingId: string | null) => void;
 };
 
-export function CommentThread({postId, comments, isOwnPost, currentUserId}: Props) {
-    const [replyingTo, setReplyingTo] = useState<string | null>(null);
-    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+export function CommentThread({postId, comments, isOwnPost, currentUserId, onReplyingChange, activeReplyId, onEditingChange, activeEditId}: Props) {
+    const [internalReplyingTo, setInternalReplyingTo] = useState<string | null>(null);
+    const [internalEditingId, setInternalEditingId] = useState<string | null>(null);
+
+    const isReplyControlled = activeReplyId !== undefined;
+    const replyingTo = isReplyControlled ? activeReplyId : internalReplyingTo;
+
+    const isEditControlled = activeEditId !== undefined;
+    const editingCommentId = isEditControlled ? activeEditId : internalEditingId;
+
+    function setReplyingTo(id: string | null) {
+        if (!isReplyControlled) setInternalReplyingTo(id);
+        onReplyingChange?.(id);
+    }
+
+    function setEditingCommentId(id: string | null) {
+        if (!isEditControlled) setInternalEditingId(id);
+        onEditingChange?.(id);
+    }
 
     const topLevel = comments.filter((c) => c.parentCommentId === null);
     const repliesFor = (commentId: string) =>
@@ -51,6 +72,7 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId}: Prop
                             defaultValue={comment.text}
                             className="flex-1 border-b bg-transparent text-neutral-200 text-sm"
                             autoFocus
+                            autoComplete="off"
                         />
                         <button type="submit">Save</button>
                         <button type="button" onClick={() => setEditingCommentId(null)}>
@@ -78,13 +100,15 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId}: Prop
                             {comment.likedByMe ? "🔥" : "🤍"} {comment.likeCount}
                         </button>
                     </Form>
-                    <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}>
-                        Reply
-                    </button>
+                    {!isEditing && (
+                        <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}>
+                            {replyingTo === comment.id ? "Cancel" : "Reply"}
+                        </button>
+                    )}
                     {canEdit && !isEditing && (
                         <button onClick={() => setEditingCommentId(comment.id)}>Edit</button>
                     )}
-                    {canDelete && (
+                    {canDelete && !isEditing && (
                         <Form method="post">
                             <input type="hidden" name="intent" value="deleteComment" />
                             <input type="hidden" name="postId" value={postId} />
@@ -97,7 +121,7 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId}: Prop
                 </div>
 
                 {replyingTo === comment.id && (
-                    <Form method="post" className="flex gap-2 mt-1">
+                    <Form method="post" className="flex gap-2 mt-1 ml-6">
                         <input type="hidden" name="intent" value="comment" />
                         <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="parentCommentId" value={comment.id} />
@@ -107,6 +131,7 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId}: Prop
                             placeholder={`Reply to ${comment.displayName}...`}
                             className="flex-1 border-b bg-transparent text-neutral-200 text-sm"
                             autoFocus
+                            autoComplete="off"
                         />
                         <button type="submit">Post</button>
                     </Form>

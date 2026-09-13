@@ -4,12 +4,20 @@ import type {WorkoutEntry} from "../types/workoutEntry.ts";
 
 type Props = {
     exercise: Exercise
+    personalBest: WorkoutEntry | null
     onSubmit: (workout: WorkoutEntry) => void
     onBack: () => void
     onHome: () => void
 }
 
-export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
+function formatBest(best: WorkoutEntry): string {
+    if (best.weight !== undefined && best.reps !== undefined) {
+        return `${best.weight} lbs × ${best.reps}`;
+    }
+    return `${best.distance} mi in ${best.time}`;
+}
+
+export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Props) {
     const [weight, setWeight] = useState("");
     const [reps, setReps] = useState("");
 
@@ -27,7 +35,6 @@ export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
             return `${trimmed}:00`;
         }
 
-        // If format is mm:ss
         if (/^\d+:\d{2}$/.test(trimmed)) {
             return trimmed;
         }
@@ -119,20 +126,28 @@ export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
         }
     }
 
+    const inputClass = "border rounded-md px-3 py-2 bg-transparent text-neutral-200 w-32 text-center";
 
     return (
-        <div className={"flex flex-col gap-2"}>
+        <div className={"flex flex-col items-center gap-2"}>
 
-            <h2 className={"text-2xl font-bold"}>{exercise.name}</h2>
+            <h2 className={"text-xl font-bold"}>{exercise.name}</h2>
+
+            {personalBest && (
+                <p className="text-sm text-yellow-400 text-center">
+                    🏆 Personal best: {formatBest(personalBest)}
+                </p>
+            )}
 
             {exercise.category === "cardio" ? (
                 <div className="flex gap-2">
                     <input
                         ref={distanceInputRef}
                         type="number"
-                        placeholder="Distance (miles)"
+                        placeholder="Distance (mi)"
                         value={distance}
                         onChange={(e) => setDistance(e.target.value)}
+                        className={inputClass}
                     />
 
                     <input
@@ -141,19 +156,21 @@ export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
                         onKeyDown={handleTimeKeyDown}
+                        className={inputClass}
                     />
                 </div>
             ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                     <input
                         ref={weightInputRef}
                         type="number"
                         placeholder="Weight (lbs)"
                         value={weight}
                         onChange={(e) => setWeight(e.target.value)}
+                        className={inputClass}
                     />
 
-                    <p>x</p>
+                    <p className="font-bold">x</p>
 
                     <input
                         type="number"
@@ -161,6 +178,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome}: Props) {
                         value={reps}
                         onChange={(e) => setReps(e.target.value)}
                         onKeyDown={handleRepsKeyDown}
+                        className={inputClass}
                     />
                 </div>
             )}

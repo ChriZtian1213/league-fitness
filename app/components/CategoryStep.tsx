@@ -9,7 +9,7 @@ export function CategoryStep({onSelect}: Props) {
 
     return (
         <div>
-            <div className="flex justify-center p-2">Select Category Worked</div>
+            <p className="flex justify-center p-2 font-bold items-center text-xl">Select Category</p>
 
             <div className={"flex items-center gap-2"}>
                 <button

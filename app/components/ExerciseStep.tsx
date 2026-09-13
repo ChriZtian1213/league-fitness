@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Category, Muscle} from "../types/workout.ts";
 import type { Exercise } from "../types/exercise.ts";
 
+const MAX_VISIBLE_EXERCISES = 6;
 
 type Props = {
     category: Category;
@@ -13,6 +14,15 @@ type Props = {
     onBack: () => void
     onHome?: ()=> void
 }
+
+const muscleLabels: Record<Muscle, string> = {
+    chest: "Chest", back: "Back", triceps: "Triceps", shoulders: "Shoulders", biceps: "Biceps",
+    glutes: "Glutes", hamstrings: "Hamstrings", quads: "Quads", calves: "Calves",
+};
+
+const categoryLabels: Record<Category, string> = {
+    upper: "Upper Body", lower: "Lower Body", cardio: "Cardio",
+};
 
 export function ExerciseStep({ category, muscle, exercises, onSelectExercise, existingExerciseNames, onCreateExercise, onBack, onHome}: Props) {
     const [query, setQuery] = useState("");
@@ -31,15 +41,19 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, ex
         )
     })
 
+    const visibleExercises = filteredExercises.slice(0, MAX_VISIBLE_EXERCISES);
+
     const noResults = query.length > 0 && filteredExercises.length === 0
 
     const exactExistingMatch = existingExerciseNames.find(
         (name) => name.toLowerCase() === query.toLowerCase()
     );
 
+    const heading = muscle ? muscleLabels[muscle] : categoryLabels[category];
+
     return (
-        <div className={"flex flex-col gap-2"}>
-            <h2>Exercise Step </h2>
+        <div className={"flex flex-col items-center gap-2"}>
+            <p className="font-bold text-xl">{heading}</p>
 
             <input
                 type="text"
@@ -47,26 +61,33 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, ex
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 list="existing-exercise-names"
+                autoComplete="off"
+                className="border rounded-md px-3 py-2 bg-transparent text-neutral-200 w-64"
             />
-            <datalist id="existing-exercise-names">
+            <datalist
+                id="existing-exercise-names">
                 {existingExerciseNames.map((name) => (
                     <option key={name} value={name} />
                 ))}
             </datalist>
 
-            <div className="flex flex-row gap-2">
-                {filteredExercises.map((exercise) => (
+            <div className="flex flex-row flex-wrap justify-center gap-2">
+                {visibleExercises.map((exercise) => (
                     <button
                         className={"size-24 border"}
                         key={exercise.id}
-                        onClick={() =>
-                            onSelectExercise(exercise)
-                        }
+                        onClick={() => onSelectExercise(exercise)}
                     >
                         {exercise.name}
                     </button>
                 ))}
             </div>
+
+            {filteredExercises.length > MAX_VISIBLE_EXERCISES && (
+                <p className="text-xs text-neutral-400">
+                    Showing {MAX_VISIBLE_EXERCISES} of {filteredExercises.length} — keep typing to narrow down
+                </p>
+            )}
 
             {noResults && (
                 <button

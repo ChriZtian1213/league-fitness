@@ -104,6 +104,12 @@ function formatLine(w: WorkoutEntry) {
         : `${w.distance} mi in ${w.time}`;
 }
 
+function pickBestForExercise(workouts: WorkoutEntry[], exerciseName: string): WorkoutEntry | null {
+    const matching = workouts.filter((w) => w.exercise === exerciseName);
+    if (matching.length === 0) return null;
+    return pickBest(matching);
+}
+
 function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
     return entries.reduce((best, curr) => {
         if (best.weight !== undefined && curr.weight !== undefined) {
@@ -284,6 +290,7 @@ export default function Log(){
                     {flow.step === "log" && selectedExercise && (
                         <LogStep
                             exercise={selectedExercise}
+                            personalBest={pickBestForExercise(workouts, selectedExercise.name)}
                             onSubmit={addWorkout}
                             onBack={flow.back}
                             onHome={() => {

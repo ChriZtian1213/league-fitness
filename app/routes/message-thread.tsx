@@ -64,6 +64,7 @@ export default function MessageThread() {
                     placeholder="Type a message..."
                     className="flex-1 border-b bg-transparent text-neutral-200 p-2"
                     autoFocus
+                    autoComplete="off"
                 />
                 <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
                     Send

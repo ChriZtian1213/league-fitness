@@ -1,22 +1,32 @@
-import {useState} from "react";
+import {useState, useRef, useEffect} from "react";
 import {Form, Link} from "react-router";
 import {CommentThread} from "~/components/CommentThread";
 import type {getFeed} from "~/server/post.server";
+import {timeAgo} from "~/utils/timeAgo";
 
 type FeedPost = Awaited<ReturnType<typeof getFeed>>[number];
 
-function timeAgo(date: Date) {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return "Now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}hr`;
-    return `${Math.floor(hours / 24)}d`;
-}
-
 export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: string}) {
     const [isEditingCaption, setIsEditingCaption] = useState(false);
+    const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
+    const [activeEditId, setActiveEditId] = useState<string | null>(null);
+    const [wantsFocus, setWantsFocus] = useState(false);
+
+    const commentInputRef = useRef<HTMLInputElement>(null);
+
+    function focusCommentInput() {
+        setActiveReplyId(null);
+        setActiveEditId(null);
+        setWantsFocus(true);
+    }
+
+    useEffect(() => {
+        if (wantsFocus && !activeReplyId && !activeEditId) {
+            commentInputRef.current?.focus();
+            commentInputRef.current?.scrollIntoView({behavior: "smooth", block: "center"});
+            setWantsFocus(false);
+        }
+    }, [wantsFocus, activeReplyId, activeEditId]);
 
     return (
         <div className="flex flex-col items-center gap-3 border-t-2 border-black p-4">
@@ -53,24 +63,44 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
             </div>
 
             <img
-                className="w-72 h-72 m-2 border-2 border-black object-cover"
+                className="w-full max-w-md border-2 border-black object-contain"
                 src={post.imageData}
                 alt={post.caption ?? "Workout post"}
             />
 
-            <div className="flex flex-row gap-4">
+            <div className="flex flex-row gap-3">
                 <Form method="post">
                     <input type="hidden" name="intent" value="like" />
                     <input type="hidden" name="postId" value={post.id} />
-                    <button type="submit">
+                    <button
+                        type="submit"
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-sm font-bold transition-colors
+                            ${post.likedByMe
+                            ? "bg-red-500/20 border-red-500 text-red-400"
+                            : "border-neutral-500 text-neutral-300 hover:border-neutral-400"
+                        }`}
+                    >
                         {post.likedByMe ? "🔥" : "🤍"} {post.likeCount}
                     </button>
                 </Form>
-                <p>🗨️ {post.commentCount}</p>
+
+                <button
+                    type="button"
+                    onClick={focusCommentInput}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold"
+                >
+                    🗨️ {post.commentCount}
+                </button>
+
                 <Form method="post">
                     <input type="hidden" name="intent" value="repost" />
                     <input type="hidden" name="postId" value={post.id} />
-                    <button type="submit">🔗 {post.repostCount}</button>
+                    <button
+                        type="submit"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold transition-colors hover:border-neutral-400"
+                    >
+                        🔗 {post.repostCount}
+                    </button>
                 </Form>
             </div>
 
@@ -115,20 +145,28 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                     comments={post.comments}
                     isOwnPost={post.isOwnPost}
                     currentUserId={currentUserId}
+                    activeReplyId={activeReplyId}
+                    onReplyingChange={setActiveReplyId}
+                    activeEditId={activeEditId}
+                    onEditingChange={setActiveEditId}
                 />
             )}
 
-            <Form method="post" className="flex gap-2 w-full max-w-md">
-                <input type="hidden" name="intent" value="comment" />
-                <input type="hidden" name="postId" value={post.id} />
-                <input
-                    key={`comment-input-${post.id}-${post.comments.length}`}
-                    name="text"
-                    placeholder="Add a comment..."
-                    className="flex-1 border-b bg-transparent text-neutral-200"
-                />
-                <button type="submit">Post</button>
-            </Form>
+            {!activeReplyId && !activeEditId && (
+                <Form method="post" className="flex gap-2 w-full max-w-md">
+                    <input type="hidden" name="intent" value="comment" />
+                    <input type="hidden" name="postId" value={post.id} />
+                    <input
+                        ref={commentInputRef}
+                        key={`comment-input-${post.id}-${post.comments.length}`}
+                        name="text"
+                        placeholder="Add a comment..."
+                        className="flex-1 border-b bg-transparent text-neutral-200"
+                        autoComplete="off"
+                    />
+                    <button type="submit">Post</button>
+                </Form>
+            )}
         </div>
     );
 }

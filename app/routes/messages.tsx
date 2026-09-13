@@ -3,21 +3,12 @@ import {Link, useLoaderData} from "react-router";
 import {requireUserId} from "~/server/session.server";
 import {getConversations} from "~/server/message.server";
 import {NavBar} from "~/components/NavBar";
+import {timeAgo} from "~/utils/timeAgo";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
     const conversations = await getConversations(userId);
     return {conversations};
-}
-
-function timeAgo(date: Date) {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return "Now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}hr`;
-    return `${Math.floor(hours / 24)}d`;
 }
 
 export default function Messages() {
