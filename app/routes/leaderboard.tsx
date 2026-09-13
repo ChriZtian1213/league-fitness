@@ -19,9 +19,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
     const requestedPeriod = url.searchParams.get("period");
     const period: LeaderboardPeriod =
-        requestedPeriod === "week" || requestedPeriod === "month"
+        requestedPeriod === "month" || requestedPeriod === "all"
             ? requestedPeriod
-            : "all";
+            : "week";
 
     const requestedScope = url.searchParams.get("scope");
     const scope: LeaderboardScope =
@@ -73,6 +73,13 @@ function capitalize(s: string) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function rankLabel(index: number): string {
+    if (index === 0) return "🥇";
+    if (index === 1) return "🥈";
+    if (index === 2) return "🥉";
+    return `#${index + 1}`;
+}
+
 function buildLink(
     current: Record<string, string>,
     changes: Partial<Record<string, string>>
@@ -119,15 +126,15 @@ export default function Leaderboard() {
                 <Link to={buildLink(current, {period: "all"})} className={period === "all" ? "underline font-bold" : ""}>All Time</Link>
             </div>
 
-            <div className="flex justify-center gap-6 mb-3 text-sm">
-                <div className="flex border border-neutral-500 rounded-md overflow-hidden">
-                    <Link to={buildLink(current, {scope: "global"})} className={`px-3 py-1 ${scope === "global" ? "bg-neutral-500" : ""}`}>Global</Link>
-                    <Link to={buildLink(current, {scope: "following"})} className={`px-3 py-1 ${scope === "following" ? "bg-neutral-500" : ""}`}>Following</Link>
-                    <Link to={buildLink(current, {scope: "mutual"})} className={`px-3 py-1 ${scope === "mutual" ? "bg-neutral-500" : ""}`}>Friends</Link>
+            <div className="flex justify-center gap-4 mb-3 text-sm flex-wrap">
+                <div className="flex flex-wrap border border-neutral-500 rounded-md overflow-hidden">
+                    <Link to={buildLink(current, {scope: "global"})} className={`px-3 py-1 text-center ${scope === "global" ? "bg-neutral-500" : ""}`}>Global</Link>
+                    <Link to={buildLink(current, {scope: "following"})} className={`px-3 py-1 text-center ${scope === "following" ? "bg-neutral-500" : ""}`}>Following</Link>
+                    <Link to={buildLink(current, {scope: "mutual"})} className={`px-3 py-1 text-center ${scope === "mutual" ? "bg-neutral-500" : ""}`}>Friends</Link>
                 </div>
-                <div className="flex border border-neutral-500 rounded-md overflow-hidden">
-                    <Link to={buildLink(current, {metric: "heaviest"})} className={`px-3 py-1 ${metric === "heaviest" ? "bg-neutral-500" : ""}`}>Heaviest Lift</Link>
-                    <Link to={buildLink(current, {metric: "volume"})} className={`px-3 py-1 ${metric === "volume" ? "bg-neutral-500" : ""}`}>Total Volume</Link>
+                <div className="flex flex-wrap border border-neutral-500 rounded-md overflow-hidden">
+                    <Link to={buildLink(current, {metric: "heaviest"})} className={`px-3 py-1 text-center ${metric === "heaviest" ? "bg-neutral-500" : ""}`}>Heaviest Lift</Link>
+                    <Link to={buildLink(current, {metric: "volume"})} className={`px-3 py-1 text-center ${metric === "volume" ? "bg-neutral-500" : ""}`}>Total Volume</Link>
                 </div>
             </div>
 
@@ -189,13 +196,13 @@ export default function Leaderboard() {
                         to={`/profile/${entry.userId}`}
                         className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
                     >
-                        <span>#{index + 1} {entry.displayName}</span>
+                        <span>{rankLabel(index)} {entry.displayName}</span>
                         <span>
-                            {entry.value.toLocaleString()} lbs
+            {entry.value.toLocaleString()} lbs
                             {metric === "heaviest" && entry.exercise && (
                                 <span className="text-neutral-400 text-sm"> — {entry.exercise}</span>
                             )}
-                        </span>
+        </span>
                     </Link>
                 ))}
             </div>
