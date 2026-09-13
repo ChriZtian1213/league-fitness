@@ -1,6 +1,6 @@
 import type { Route } from "./+types/profile";
 import {Form, Link, useLoaderData} from "react-router";
-import {useState, useEffect} from "react";
+import {useState} from "react";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
 import {
@@ -166,41 +166,43 @@ export default function Profile() {
 
             <div className="flex flex-row items-center gap-3 px-4">
                 <img
-                    className="w-32 h-32 rounded-full m-2 border-2 border-black object-cover"
+                    className="w-20 h-20 rounded-full m-2 border-2 border-black object-cover"
                     src={user?.profilePicture || "/favicon.ico"}
                     alt={`${user?.displayName ?? "User"}'s profile picture`}
                 />
-                <div className="flex flex-col p-4">
-                    <p className="text-3xl font-bold">{user?.displayName}</p>
+                <div className="flex flex-col p-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-2xl font-bold leading-tight">{user?.displayName}</p>
+                        {!isOwnProfile && (
+                            <Form method="post">
+                                <input
+                                    type="hidden"
+                                    name="intent"
+                                    value={viewerIsFollowing ? "unfollow" : "follow"}
+                                />
+                                <button
+                                    type="submit"
+                                    className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-bold transition-colors
+                            ${viewerIsFollowing
+                                        ? "border-neutral-500 text-neutral-400 hover:border-neutral-400"
+                                        : "bg-blue-500/20 border-blue-500 text-blue-400"
+                                    }`}
+                                >
+                                    {viewerIsFollowing ? "Following" : "Follow"}
+                                </button>
+                            </Form>
+                        )}
+                    </div>
+                    <p className="text-sm text-neutral-400">@{user?.username}</p>
                     {user?.bio && !isEditing && (
                         <p className="text-sm text-neutral-300 mt-1 max-w-xs">{user.bio}</p>
                     )}
-                    <div className="flex flex-row flex-wrap gap-2 mt-1">
-                        <p>{postCount} posts</p>
-                        <p>{followerCount} followers</p>
-                        <p>{followingCount} following</p>
+                    <div className="flex flex-row gap-1.5 mt-1 text-sm">
+                        <span>{postCount} <span className="text-neutral-400">posts</span></span>
+                        <span>{followerCount} <span className="text-neutral-400">followers</span></span>
+                        <span>{followingCount} <span className="text-neutral-400">following</span></span>
                     </div>
                 </div>
-
-                {!isOwnProfile && (
-                    <Form method="post">
-                        <input
-                            type="hidden"
-                            name="intent"
-                            value={viewerIsFollowing ? "unfollow" : "follow"}
-                        />
-                        <button
-                            type="submit"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-sm font-bold transition-colors
-                    ${viewerIsFollowing
-                                ? "border-neutral-500 text-neutral-400 hover:border-neutral-400"
-                                : "bg-blue-500/20 border-blue-500 text-blue-400"
-                            }`}
-                        >
-                            {viewerIsFollowing ? "Following" : "Follow"}
-                        </button>
-                    </Form>
-                )}
             </div>
 
             {isOwnProfile && isEditing && (
@@ -296,7 +298,7 @@ export default function Profile() {
             </div>
 
             {activeTab === "posts" && (
-                <div className="grid grid-cols-3 gap-1 p-1">
+                <div className="grid grid-cols-3 gap-0.5 p-1">
                     {posts.length === 0 && (
                         <p className="col-span-3 text-center py-8">No posts yet.</p>
                     )}
