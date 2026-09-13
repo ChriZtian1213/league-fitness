@@ -15,6 +15,7 @@ export interface PostEntry {
     id: string;
     userId: string;
     displayName: string;
+    profilePicture: string | null;
     imageData: string;
     caption?: string;
     createdAt: Date;

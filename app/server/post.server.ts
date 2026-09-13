@@ -1,8 +1,31 @@
-import { connectDB } from "./db.server";
-import { ObjectId } from "mongodb";
 import {getFollowedObjectIds} from "~/server/user.server";
 import { createNotification } from "~/server/notification.server";
 export type FeedScope = "following" | "global";
+import { connectDB } from "./db.server";
+import { ObjectId } from "mongodb";
+
+interface CommentDoc {
+    id: string;
+    userId: ObjectId;
+    displayName: string;
+    text: string;
+    createdAt: Date;
+    likedBy: ObjectId[];
+    parentCommentId: string | null;
+    edited?: boolean;
+    editedAt?: Date;
+}
+
+interface PostDoc {
+    _id: ObjectId;
+    userId: ObjectId;
+    imageData: string;
+    caption?: string;
+    createdAt: Date;
+    likedBy: ObjectId[];
+    comments: CommentDoc[];
+    repostedBy: ObjectId[];
+}
 
 export interface CreatePostInput {
     imageData: string;
@@ -11,20 +34,18 @@ export interface CreatePostInput {
 
 export async function createPost(userId: string, data: CreatePostInput) {
     const db = await connectDB();
-    const result = await db.collection("posts").insertOne({
+    const result = await db.collection<PostDoc>("posts").insertOne({
         userId: new ObjectId(userId),
         imageData: data.imageData,
         caption: data.caption,
         createdAt: new Date(),
-        likedBy: [] as ObjectId[],
-        comments: [] as any[],
-        repostedBy: [] as ObjectId[],
-    });
+        likedBy: [],
+        comments: [],
+        repostedBy: [],
+    } as any);
     return result.insertedId.toString();
 }
 
-// Global feed, newest first. Also computes per-viewer state (liked/following)
-// so the UI doesn't need a second round trip.
 export async function getFeed(viewerUserId: string, scope: FeedScope = "following") {
     const db = await connectDB();
     const viewerObjectId = new ObjectId(viewerUserId);
@@ -56,7 +77,7 @@ export async function getFeed(viewerUserId: string, scope: FeedScope = "followin
         { $unwind: "$author" }
     );
 
-    const posts = await db.collection("posts").aggregate(pipeline).toArray();
+    const posts = await db.collection<PostDoc>("posts").aggregate(pipeline).toArray();
 
     return posts.map((post: any) => ({
         id: post._id.toString(),
@@ -86,6 +107,7 @@ export async function getFeed(viewerUserId: string, scope: FeedScope = "followin
             id.equals(viewerObjectId)
         ),
         isOwnPost: post.userId.equals(viewerObjectId),
+        isRepostedByMe: (post.repostedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
     }));
 }
 
@@ -95,13 +117,13 @@ export async function toggleLike(userId: string, postId: string) {
     const postObjectId = new ObjectId(postId);
 
     const post = await db
-        .collection("posts")
+        .collection<PostDoc>("posts")
         .findOne({ _id: postObjectId }, { projection: { likedBy: 1, userId: 1 } });
     if (!post) throw new Error("Post not found");
 
     const alreadyLiked = (post.likedBy ?? []).some((id: ObjectId) => id.equals(userObjectId));
 
-    await db.collection("posts").updateOne(
+    await db.collection<PostDoc>("posts").updateOne(
         { _id: postObjectId },
         alreadyLiked
             ? { $pull: { likedBy: userObjectId } }
@@ -113,10 +135,9 @@ export async function toggleLike(userId: string, postId: string) {
             .collection("users")
             .findOne({ _id: userObjectId }, { projection: { displayName: 1 } });
         if (fromUser) {
-            await createNotification(post.userId.toString(), userId, fromUser.displayName, "like", postId);
+            await createNotification(post.userId.toString(), userId, fromUser.displayName as string, "like", postId);
         }
     }
-
 }
 
 export async function addComment(
@@ -128,10 +149,10 @@ export async function addComment(
 ) {
     const db = await connectDB();
     const post = await db
-        .collection("posts")
+        .collection<PostDoc>("posts")
         .findOne({ _id: new ObjectId(postId) }, { projection: { userId: 1 } });
 
-    await db.collection("posts").updateOne(
+    await db.collection<PostDoc>("posts").updateOne(
         { _id: new ObjectId(postId) },
         {
             $push: {
@@ -141,7 +162,7 @@ export async function addComment(
                     displayName,
                     text,
                     createdAt: new Date(),
-                    likedBy: [] as ObjectId[],
+                    likedBy: [],
                     parentCommentId,
                 },
             },
@@ -158,20 +179,20 @@ export async function toggleCommentLike(userId: string, postId: string, commentI
     const userObjectId = new ObjectId(userId);
     const postObjectId = new ObjectId(postId);
 
-    const post = await db.collection("posts").findOne(
+    const post = await db.collection<PostDoc>("posts").findOne(
         { _id: postObjectId },
         { projection: { comments: 1 } }
     );
     if (!post) throw new Error("Post not found");
 
-    const comment = (post.comments ?? []).find((c: any) => c.id === commentId);
+    const comment = (post.comments ?? []).find((c) => c.id === commentId);
     if (!comment) throw new Error("Comment not found");
 
     const alreadyLiked = (comment.likedBy ?? []).some((id: ObjectId) =>
         id.equals(userObjectId)
     );
 
-    await db.collection("posts").updateOne(
+    await db.collection<PostDoc>("posts").updateOne(
         { _id: postObjectId, "comments.id": commentId },
         alreadyLiked
             ? { $pull: { "comments.$.likedBy": userObjectId } }
@@ -185,7 +206,7 @@ export async function toggleRepost(userId: string, postId: string) {
     const postObjectId = new ObjectId(postId);
 
     const post = await db
-        .collection("posts")
+        .collection<PostDoc>("posts")
         .findOne({ _id: postObjectId }, { projection: { repostedBy: 1, userId: 1 } });
     if (!post) throw new Error("Post not found");
 
@@ -193,7 +214,7 @@ export async function toggleRepost(userId: string, postId: string) {
         id.equals(userObjectId)
     );
 
-    await db.collection("posts").updateOne(
+    await db.collection<PostDoc>("posts").updateOne(
         { _id: postObjectId },
         alreadyReposted
             ? { $pull: { repostedBy: userObjectId } }
@@ -205,7 +226,7 @@ export async function toggleRepost(userId: string, postId: string) {
             .collection("users")
             .findOne({ _id: userObjectId }, { projection: { displayName: 1 } });
         if (fromUser) {
-            await createNotification(post.userId.toString(), userId, fromUser.displayName, "repost", postId);
+            await createNotification(post.userId.toString(), userId, fromUser.displayName as string, "repost", postId);
         }
     }
 }
@@ -219,10 +240,10 @@ export async function deleteComment(
     const postObjectId = new ObjectId(postId);
     const requestingUserObjectId = new ObjectId(requestUserId);
 
-    const post = await db.collection("posts").findOne({_id: postObjectId}, {projection: { userId: 1, comments: 1}});
+    const post = await db.collection<PostDoc>("posts").findOne({_id: postObjectId}, {projection: { userId: 1, comments: 1}});
     if (!post) throw new Error("Post not found");
 
-    const comment = (post.comments ?? []).find((c: any) => c.id === commentId);
+    const comment = (post.comments ?? []).find((c) => c.id === commentId);
     if (!comment) throw new Error("Comment not found");
 
     const isPostOwner = post.userId.equals(requestingUserObjectId);
@@ -232,24 +253,21 @@ export async function deleteComment(
         throw new Error("Not authorized to delete this comment");
     }
 
-    // Cascade: also remove any replies pointing at this comment, so we
-    // never leave orphaned replies with a dangling parentCommentId.
     const idsToRemove = new Set([commentId]);
     for (const c of post.comments ?? []) {
         if (c.parentCommentId === commentId) idsToRemove.add(c.id);
     }
 
-    await db.collection("posts").updateOne(
+    await db.collection<PostDoc>("posts").updateOne(
         { _id: postObjectId },
         { $pull: { comments: { id: { $in: [...idsToRemove] } } } }
     );
-
 }
 
 export async function editPost(userId: string, postId: string, newCaption: string) {
     const db = await connectDB();
 
-    const result = await db.collection("posts").updateOne(
+    const result = await db.collection<PostDoc>("posts").updateOne(
         { _id: new ObjectId(postId), userId: new ObjectId(userId) },
         { $set: { caption: newCaption } }
     );
@@ -269,15 +287,15 @@ export async function editComment(
     const postObjectId = new ObjectId(postId);
     const userObjectId = new ObjectId(userId);
 
-    const post = await db.collection("posts").findOne({_id: postObjectId}, {projection: {comments: 1}});
+    const post = await db.collection<PostDoc>("posts").findOne({_id: postObjectId}, {projection: {comments: 1}});
     if (!post) throw new Error("Post not found");
 
-    const comment = (post.comments ?? []).find((c: any) => c.id === commentId);
+    const comment = (post.comments ?? []).find((c) => c.id === commentId);
     if (!comment) throw new Error("Comment not found");
 
     if (!comment.userId.equals(userObjectId)) throw new Error("Not authorized to edit this comment");
 
-    await db.collection("posts").updateOne(
+    await db.collection<PostDoc>("posts").updateOne(
         { _id: postObjectId, "comments.id": commentId },
         {
             $set: {
@@ -295,7 +313,7 @@ export async function deletePost(
 ) {
     const db = await connectDB();
 
-    const result = await db.collection("posts").deleteOne({
+    const result = await db.collection<PostDoc>("posts").deleteOne({
         _id: new ObjectId(postId),
         userId: new ObjectId(userId),
     });
@@ -315,12 +333,12 @@ export interface UserPostSummary {
 export async function getPostsByUser(userId: string): Promise<UserPostSummary[]> {
     const db = await connectDB();
     const posts = await db
-        .collection("posts")
+        .collection<PostDoc>("posts")
         .find({ userId: new ObjectId(userId) })
         .sort({ createdAt: -1 })
         .toArray();
 
-    return posts.map((p: any) => ({
+    return posts.map((p) => ({
         id: p._id.toString(),
         imageData: p.imageData,
         caption: p.caption,
@@ -330,18 +348,18 @@ export async function getPostsByUser(userId: string): Promise<UserPostSummary[]>
 
 export async function getPostCount(userId: string): Promise<number> {
     const db = await connectDB();
-    return db.collection("posts").countDocuments({ userId: new ObjectId(userId) });
+    return db.collection<PostDoc>("posts").countDocuments({ userId: new ObjectId(userId) });
 }
 
 export async function getRepostedPostsByUser(userId: string): Promise<UserPostSummary[]> {
     const db = await connectDB();
     const posts = await db
-        .collection("posts")
+        .collection<PostDoc>("posts")
         .find({ repostedBy: new ObjectId(userId) })
         .sort({ createdAt: -1 })
         .toArray();
 
-    return posts.map((p: any) => ({
+    return posts.map((p) => ({
         id: p._id.toString(),
         imageData: p.imageData,
         caption: p.caption,
@@ -349,8 +367,6 @@ export async function getRepostedPostsByUser(userId: string): Promise<UserPostSu
     }));
 }
 
-// Single post with full detail — comments, like/repost counts — for the
-// post detail page. Returns null if the post doesn't exist.
 export async function getPostById(viewerUserId: string, postId: string) {
     const db = await connectDB();
     const viewerObjectId = new ObjectId(viewerUserId);
@@ -358,7 +374,7 @@ export async function getPostById(viewerUserId: string, postId: string) {
     if (!ObjectId.isValid(postId)) return null;
 
     const posts = await db
-        .collection("posts")
+        .collection<PostDoc>("posts")
         .aggregate([
             { $match: { _id: new ObjectId(postId) } },
             {
@@ -404,4 +420,3 @@ export async function getPostById(viewerUserId: string, postId: string) {
         isOwnPost: post.userId.equals(viewerObjectId),
     };
 }
-

@@ -11,6 +11,19 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
     const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
     const [activeEditId, setActiveEditId] = useState<string | null>(null);
     const [wantsFocus, setWantsFocus] = useState(false);
+    const [commentFlash, setCommentFlash] = useState(false);
+    const [repostFlash, setRepostFlash] = useState(false);
+
+    function handleCommentClick() {
+        setCommentFlash(true);
+        setTimeout(() => setCommentFlash(false), 300);
+        focusCommentInput();
+    }
+
+    function handleRepostClick() {
+        setRepostFlash(true);
+        setTimeout(() => setRepostFlash(false), 300);
+    }
 
     const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,7 +88,7 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                     <button
                         type="submit"
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-sm font-bold transition-colors
-                            ${post.likedByMe
+                ${post.likedByMe
                             ? "bg-red-500/20 border-red-500 text-red-400"
                             : "border-neutral-500 text-neutral-300 hover:border-neutral-400"
                         }`}
@@ -86,8 +99,12 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
 
                 <button
                     type="button"
-                    onClick={focusCommentInput}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold"
+                    onClick={handleCommentClick}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-sm font-bold transition-colors
+            ${commentFlash
+                        ? "bg-white/30 border-white text-white"
+                        : "border-neutral-500 text-neutral-300"
+                    }`}
                 >
                     🗨️ {post.commentCount}
                 </button>
@@ -97,7 +114,11 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                     <input type="hidden" name="postId" value={post.id} />
                     <button
                         type="submit"
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold transition-colors hover:border-neutral-400"
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-sm font-bold transition-colors
+                ${post.isRepostedByMe
+                            ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                            : "border-neutral-500 text-neutral-300 hover:border-neutral-400"
+                        }`}
                     >
                         🔗 {post.repostCount}
                     </button>

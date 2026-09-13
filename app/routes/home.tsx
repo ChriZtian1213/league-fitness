@@ -1,6 +1,5 @@
 import type {Route} from "./+types/home"
 import {Form, Link, useLoaderData} from "react-router"
-import type {PostEntry} from "~/types/post";
 import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser, getResendCooldownSeconds} from "~/server/user.server";
@@ -12,6 +11,8 @@ import {PostCard} from "~/components/PostCard";
 import {CooldownTimer} from "~/components/CooldownTimer";
 import {getUnreadNotificationCount} from "~/server/notification.server";
 import {getUnreadMessageCount} from "~/server/message.server";
+
+export type PostEntry = Awaited<ReturnType<typeof getFeed>>[number];
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -231,7 +232,7 @@ export default function Home() {
             )}
 
             {posts.map((post: PostEntry) => (
-                <PostCard key={post.id} post={post} currentUserId={user?.id ?? ""} />
+                <PostCard key={post.id} post={post} currentUserId={user?.id ?? ""}  />
             ))}
 
             <NavBar/>
