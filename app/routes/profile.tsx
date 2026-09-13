@@ -14,6 +14,7 @@ import {
     changePassword
 } from "~/server/user.server";
 import {getPostsByUser, getPostCount, getRepostedPostsByUser} from "~/server/post.server";
+import {ImageCropModal} from "~/components/ImageCropModal";
 
 
 export async function loader({request, params}: Route.LoaderArgs) {
@@ -87,11 +88,11 @@ export async function action({request, params}: Route.ActionArgs) {
     if (intent === "editProfile") {
         const displayName = formData.get("displayName");
         const bio = formData.get("bio");
-        const image = formData.get("profilePicture");
+        const croppedImage = formData.get("profilePicture");
 
-        const update: {displayName?:string; bio?: string; profilePicture?: string} = {};
+        const update: {displayName?: string; bio?: string; profilePicture?: string} = {};
 
-        if (typeof displayName === "string" && displayName.trim()){
+        if (typeof displayName === "string" && displayName.trim()) {
             update.displayName = displayName.trim();
         }
 
@@ -99,13 +100,8 @@ export async function action({request, params}: Route.ActionArgs) {
             update.bio = bio.trim();
         }
 
-        if (image instanceof File && image.size > 0) {
-            if (image.size > 5 * 1024 * 1024) {
-                return {error: "Image must be under 5MB."};
-            }
-            const arrayBuffer = await image.arrayBuffer();
-            const base64 = Buffer.from(arrayBuffer).toString("base64");
-            update.profilePicture = `data:${image.type};base64,${base64}`;
+        if (typeof croppedImage === "string" && croppedImage.startsWith("data:image")) {
+            update.profilePicture = croppedImage;
         }
 
         await updateProfile(viewerId, update);
@@ -125,6 +121,17 @@ export default function Profile() {
     const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts">("posts");
     const [isEditing, setIsEditing] = useState(false);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+    const [croppedImage, setCroppedImage] = useState<string | null>(null);
+
+    function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => setRawImageSrc(reader.result as string);
+        reader.readAsDataURL(file);
+    }
 
     useEffect(() => {
         if (actionData?.passwordChanged) {
@@ -193,25 +200,38 @@ export default function Profile() {
             {isOwnProfile && isEditing && (
                 <Form
                     method="post"
-                    encType="multipart/form-data"
                     className="flex flex-col gap-3 max-w-md mx-auto px-4 pb-4"
+                    onSubmit={() => {
+                        setRawImageSrc(null);
+                        setCroppedImage(null);
+                    }}
                 >
                     <input type="hidden" name="intent" value="editProfile" />
+                    <input type="hidden" name="profilePicture" value={croppedImage ?? ""} />
 
-                    <label className="text-sm text-neutral-400">
-                        Profile picture
-                        <input
-                            type="file"
-                            name="profilePicture"
-                            accept="image/*"
-                            className="block mt-1 text-sm text-neutral-300
-            file:mr-3 file:py-2 file:px-4
-            file:rounded-md file:border file:border-neutral-500
-            file:bg-neutral-700 file:text-neutral-200 file:font-bold
-            file:cursor-pointer
-            hover:file:bg-neutral-600"
-                        />
-                    </label>
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm text-neutral-400">Profile picture</label>
+
+                        {croppedImage && (
+                            <img
+                                src={croppedImage}
+                                alt="New profile picture preview"
+                                className="w-24 h-24 rounded-full object-cover border border-black"
+                            />
+                        )}
+
+                        <label className="text-sm">
+                <span className="inline-block cursor-pointer border border-neutral-500 rounded-md bg-neutral-700 text-neutral-200 font-bold px-4 py-2 hover:bg-neutral-600">
+                    {croppedImage ? "Choose a different photo" : "Choose photo"}
+                </span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                        </label>
+                    </div>
 
                     <label className="text-sm text-neutral-400">
                         Display name
@@ -238,6 +258,17 @@ export default function Profile() {
                         Save Changes
                     </button>
                 </Form>
+            )}
+
+            {rawImageSrc && (
+                <ImageCropModal
+                    imageSrc={rawImageSrc}
+                    onCancel={() => setRawImageSrc(null)}
+                    onCropDone={(dataUrl) => {
+                        setCroppedImage(dataUrl);
+                        setRawImageSrc(null);
+                    }}
+                />
             )}
 
             {isOwnProfile && isEditing && (
