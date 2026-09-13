@@ -15,10 +15,19 @@ import {
 } from "~/server/user.server";
 import {getPostsByUser, getPostCount, getRepostedPostsByUser} from "~/server/post.server";
 import {ImageCropModal, type ShapeOption} from "~/components/ImageCropModal";
+import {getPublicWorkoutDates} from "~/server/workout.server";
+import {WorkoutCalendar} from "~/components/WorkoutCalendar";
 
 const PROFILE_SHAPE_OPTIONS: ShapeOption[] = [
     {key: "circle", aspect: 1, cropShape: "round", label: "Profile Photo"},
 ];
+
+function toDateStr(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 
 export async function loader({request, params}: Route.LoaderArgs) {
     const viewerId = await requireUserId(request);
@@ -30,7 +39,13 @@ export async function loader({request, params}: Route.LoaderArgs) {
         throw new Response("User not found", {status: 404});
     }
 
-    const [posts, reposts, postCount, followerCount, followingCount, viewerIsFollowing] =
+    const url = new URL(request.url);
+    const now = new Date();
+    const todayDateStr = toDateStr(now);
+    const year = Number(url.searchParams.get("year")) || now.getFullYear();
+    const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
+
+    const [posts, reposts, postCount, followerCount, followingCount, viewerIsFollowing, loggedDates,] =
         await Promise.all([
             getPostsByUser(profileUserId),
             getRepostedPostsByUser(profileUserId),
@@ -38,11 +53,13 @@ export async function loader({request, params}: Route.LoaderArgs) {
             getFollowerCount(profileUserId),
             getFollowingCount(profileUserId),
             isOwnProfile ? Promise.resolve(false) : isFollowing(viewerId, profileUserId),
+            getPublicWorkoutDates(viewerId, profileUserId),
         ]);
 
     return {
         user, posts, reposts, postCount, followerCount, followingCount,
         isOwnProfile, viewerIsFollowing, profileUserId,
+        loggedDates, year, month, todayDateStr,
     };
 }
 
@@ -115,11 +132,12 @@ export async function action({request, params}: Route.ActionArgs) {
 export default function Profile() {
     const {
         user, posts, reposts, postCount, followerCount, followingCount,
-        isOwnProfile, viewerIsFollowing,
+        isOwnProfile, viewerIsFollowing, loggedDates, year, month, todayDateStr,
     } = useLoaderData<typeof loader>();
+
     const navigate = useNavigate();
 
-    const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts">("posts");
+    const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts" | "calendar">("posts");
     const [isEditing, setIsEditing] = useState(false);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
 
@@ -262,6 +280,15 @@ export default function Profile() {
                         />
                     </label>
 
+                    <label className="flex items-center gap-2 text-sm text-neutral-400">
+                        <input
+                            type="checkbox"
+                            name="calendarPublic"
+                            defaultChecked={user?.calendarPublic ?? true}
+                        />
+                        Make my workout calendar public
+                    </label>
+
                     <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
                         Save Changes
                     </button>
@@ -298,6 +325,14 @@ export default function Profile() {
                 >
                     Reposts
                 </button>
+                {(isOwnProfile || loggedDates !== null) && (
+                    <button
+                        onClick={() => setActiveTab("calendar")}
+                        className={activeTab === "calendar" ? "underline font-bold" : ""}
+                    >
+                        Calendar
+                    </button>
+                )}
             </div>
 
             {activeTab === "posts" && (
@@ -335,6 +370,19 @@ export default function Profile() {
                             />
                         </Link>
                     ))}
+                </div>
+            )}
+
+            {activeTab === "calendar" && loggedDates !== null && (
+                <div className="py-4">
+                    <WorkoutCalendar
+                        year={year}
+                        month={month}
+                        loggedDates={loggedDates}
+                        selectedDate={null}
+                        today={todayDateStr}
+                        clearTo="?"
+                    />
                 </div>
             )}
 

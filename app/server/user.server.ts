@@ -14,6 +14,7 @@ export interface PublicUser {
     emailVerified: boolean;
     bio?: string;
     profilePicture?: string;
+    calendarPublic: boolean;
 }
 
 export interface UserSearchResult {
@@ -35,6 +36,7 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
         emailVerified: user.emailVerified ?? false,
         bio: user.bio,
         profilePicture: user.profilePicture,
+        calendarPublic: user.calendarPublic ?? true,
     };
 }
 
@@ -42,22 +44,21 @@ export interface UpdateProfileInput {
     displayName?: string;
     bio?: string;
     profilePicture?: string;
+    calendarPublic?: boolean;
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<void> {
     const db = await connectDB();
 
     const update: Record<string, any> = {};
-
     if (data.displayName !== undefined) {
         const trimmed = data.displayName.trim();
-        if (!trimmed) {
-            throw new Error("Display name cannot be empty.");
-        }
+        if (!trimmed) throw new Error("Display name cannot be empty.");
         update.displayName = trimmed;
     }
     if (data.bio !== undefined) update.bio = data.bio;
     if (data.profilePicture !== undefined) update.profilePicture = data.profilePicture;
+    if (data.calendarPublic !== undefined) update.calendarPublic = data.calendarPublic;
 
     if (Object.keys(update).length === 0) return;
 
@@ -207,7 +208,7 @@ export async function unfollowUser(userId: string, targetUserId: string): Promis
     const db = await connectDB();
     await db.collection("users").updateOne(
         { _id: new ObjectId(targetUserId) },
-        { $pull: { followerIds: new ObjectId(userId) } }
+        { $pull: { followerIds: new ObjectId(userId) } } as any
     );
 }
 

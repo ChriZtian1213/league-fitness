@@ -7,13 +7,14 @@ type Props = {
     loggedDates: string[];
     selectedDate: string | null;
     today: string; // server's guess — used only until the client corrects it
+    clearTo: string;
 };
 
 function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
-export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}: Props) {
+export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, clearTo="/log"}: Props) {
     const clientToday = useLocalToday(today)
     const loggedSet = new Set(loggedDates);
 
@@ -88,7 +89,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}:
 
             {(isDifferentMonth || (selectedDate && selectedDate !== clientToday)) && (
                 <div className="flex justify-center mt-2">
-                    <Link to="/log" className="text-xs text-neutral-400 underline">
+                    <Link to={clearTo ?? "?"} className="text-xs text-neutral-400 underline">
                         Clear selection
                     </Link>
                 </div>

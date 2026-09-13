@@ -540,3 +540,20 @@ export async function getWorkoutDatesForUser(userId: string): Promise<string[]> 
 
     return (cursorResults as { _id: string }[]).map((doc) => doc._id);
 }
+
+export async function getPublicWorkoutDates(viewerUserId: string, profileUserId: string): Promise<string[] | null> {
+    const db = await connectDB();
+
+    const isOwnCalendar = viewerUserId === profileUserId;
+
+    if (!isOwnCalendar) {
+        const targetUser = await db
+            .collection("users")
+            .findOne({ _id: new ObjectId(profileUserId) }, { projection: { calendarPublic: 1 } });
+
+        const isPublic = targetUser?.calendarPublic ?? true;
+        if (!isPublic) return null;
+    }
+
+    return getWorkoutDatesForUser(profileUserId);
+}

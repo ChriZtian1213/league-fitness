@@ -232,9 +232,9 @@ export default function Leaderboard() {
                         />
                     </div>
 
-                    <div className="flex justify-between w-full max-w-md mx-auto px-4 text-xs text-neutral-400 mb-1">
+                    <div className="flex justify-between w-full max-w-md mx-auto text-xs text-neutral-400 mb-1">
                         <span>Exercise</span>
-                        <span>User — Weight</span>
+                        <span>User — Weight lifted</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-2 px-4">
