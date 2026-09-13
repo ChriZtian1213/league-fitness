@@ -13,9 +13,8 @@ import {WorkoutCalendar} from "~/components/WorkoutCalendar";
 import {Form, useFetcher, useLoaderData} from "react-router";
 import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
 import {requireUserId} from "~/server/session.server";
-import {getUserById} from "~/server/user.server";
-
-
+import {getUserById} from "~/server/user.server"
+import {useLocalToday} from "~/hooks/useLocalToday";
 
 
 const HARDCODED_EXERCISES: Exercise[] = [
@@ -120,6 +119,8 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 
 export default function Log(){
     const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr} = useLoaderData<typeof loader>();
+    const clientToday = useLocalToday(todayDateStr);
+
     const navigate = useNavigate();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
@@ -150,18 +151,11 @@ export default function Log(){
         const url = new URL(window.location.href);
         const hasDateParam = url.searchParams.has("date");
 
-        if (!hasDateParam) {
-            const now = new Date();
-            const localYear = now.getFullYear();
-            const localMonth = now.getMonth() + 1;
-            const localDay = now.getDate();
-            const localDateStr = `${localYear}-${String(localMonth).padStart(2, "0")}-${String(localDay).padStart(2, "0")}`;
-
-            if (localDateStr !== date) {
-                navigate(`?year=${localYear}&month=${localMonth}&date=${localDateStr}`, {replace: true});
-            }
+        if (!hasDateParam && clientToday !== date) {
+            const [y, m] = clientToday.split("-");
+            navigate(`?year=${y}&month=${Number(m)}&date=${clientToday}`, {replace: true});
         }
-    }, []);
+    }, [clientToday]);
 
     useEffect(() => {
         if (fetcher.data?.error && fetcher.data?.tempId) {
@@ -308,12 +302,12 @@ export default function Log(){
                         month={month}
                         loggedDates={loggedDates}
                         selectedDate={date}
-                        today={todayDateStr}
+                        today={clientToday}
                     />
                 </div>
 
                 <h2 className="font-bold mt-4 px-4">
-                    {date === todayDateStr ? "Today's Logs" : `Logs for ${date}`}
+                    {date === clientToday ? "Today's Logs" : `Logs for ${date}`}
                 </h2>
 
                 {groupedByExercise.size === 0 && (

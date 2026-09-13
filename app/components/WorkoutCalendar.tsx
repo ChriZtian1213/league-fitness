@@ -1,5 +1,5 @@
 import {Link} from "react-router";
-import {useState, useEffect} from "react";
+import {useLocalToday} from "~/hooks/useLocalToday";
 
 type Props = {
     year: number;
@@ -13,18 +13,8 @@ function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
-function getLocalTodayStr() {
-    const now = new Date();
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
 export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}: Props) {
-    const [clientToday, setClientToday] = useState(today);
-
-    useEffect(() => {
-        setClientToday(getLocalTodayStr());
-    }, []);
-
+    const clientToday = useLocalToday(today)
     const loggedSet = new Set(loggedDates);
 
     const firstOfMonth = new Date(year, month - 1, 1);
