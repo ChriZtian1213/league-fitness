@@ -28,17 +28,17 @@ export async function action({request} : Route.ActionArgs){
     const intent = formData.get("intent");
 
     if (intent === "login"){
-        const email = formData.get("email");
+        const identifier = formData.get("identifier");
         const password = formData.get("password");
 
-        if (typeof email !== "string" || typeof password !== "string") {
+        if (typeof identifier !== "string" || typeof password !== "string") {
             return {intent: "login", error: "Invalid form data."};
         }
 
-        const userId = await verifyLogin({email, password});
+        const userId = await verifyLogin({identifier, password});
 
         if (!userId) {
-            return {intent: "login", error: "Invalid email or password."};
+            return {intent: "login", error: "Invalid email/username or password."};
         }
 
         return createUserSession(userId, "/home");

@@ -152,14 +152,20 @@ export async function createUser(data: CreateUserInput) {
 }
 
 export interface LoginInput {
-    email: string;
+    identifier: string; // email or username
     password: string;
 }
 
 export async function verifyLogin(data: LoginInput): Promise<string | null> {
     const db = await connectDB();
 
-    const user = await db.collection("users").findOne({ email: data.email });
+    const user = await db.collection("users").findOne({
+        $or: [
+            { email: data.identifier },
+            { username: data.identifier.toLowerCase() },
+        ],
+    });
+
     if (!user) return null;
 
     const isValid = await bcrypt.compare(data.password, user.password);

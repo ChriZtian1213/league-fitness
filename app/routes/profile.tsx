@@ -214,7 +214,6 @@ export default function Profile() {
                             </Form>
                         )}
                     </div>
-                    <p className="text-sm text-neutral-400">@{user?.username}</p>
                     {user?.bio && !isEditing && (
                         <p className="text-sm text-neutral-300 mt-1 max-w-xs">{user.bio}</p>
                     )}

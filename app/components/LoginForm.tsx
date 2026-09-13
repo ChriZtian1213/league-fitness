@@ -18,11 +18,11 @@ export function LoginForm({ error }: Props) {
             <p className="flex justify-center pb-2">Lets get you signed in!</p>
 
             <div className="flex flex-col gap-1">
-                <label>Email:</label>
+                <label>Email or Username:</label>
                 <input
                     className="border-b text-neutral-200"
-                    name="email"
-                    type="email"
+                    name="identifier"
+                    type="text"
                     required
                 />
             </div>
