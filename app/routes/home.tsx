@@ -174,29 +174,33 @@ export default function Home() {
                 </div>
             )}
             <div className="flex items-center justify-between mb-4 px-4">
-                <div className="w-16 flex justify-start">
-                    <Link to="/notifications" className="relative text-2xl">
-                        🔔
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
-                                {unreadCount > 9 ? "9+" : unreadCount}
-                            </span>
-                        )}
-                    </Link>
-                </div>
+                <Link
+                    to="/notifications"
+                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors"
+                >
+                    🔔
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
+                {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+                    )}
+                </Link>
+
                 <div className="text-center font-bold text-4xl p-3 whitespace-nowrap">
                     League Fitness
                 </div>
-                <div className="w-16 flex justify-end">
-                    <Link to="/messages" className="relative text-2xl">
-                        ✉️
-                        {unreadMessageCount > 0 && (
-                            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
-                                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
-                            </span>
-                        )}
-                    </Link>
-                </div>
+
+                <Link
+                    to="/messages"
+                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors"
+                >
+                    ✉️
+                    {unreadMessageCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
+                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+            </span>
+                    )}
+                </Link>
             </div>
 
             <h2 className="px-4">Welcome back, {user?.displayName}!</h2>

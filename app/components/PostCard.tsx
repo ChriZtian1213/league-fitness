@@ -161,10 +161,12 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                         key={`comment-input-${post.id}-${post.comments.length}`}
                         name="text"
                         placeholder="Add a comment..."
-                        className="flex-1 border-b bg-transparent text-neutral-200"
+                        className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
                         autoComplete="off"
                     />
-                    <button type="submit">Post</button>
+                    <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
+                        Post
+                    </button>
                 </Form>
             )}
         </div>

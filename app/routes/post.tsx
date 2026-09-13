@@ -1,12 +1,12 @@
 import type {Route} from "./+types/post";
 import {useState} from "react";
-import {Form, Link, useLoaderData} from "react-router";
+import {Form, Link, useLoaderData, redirect} from "react-router";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
 import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, deleteComment, editComment, editPost, deletePost} from "~/server/post.server";
-import {redirect} from "react-router";
 import {getUserById} from "~/server/user.server";
 import {CommentThread} from "~/components/CommentThread";
+import {timeAgo} from "~/utils/timeAgo";
 
 export async function loader({request, params}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -126,16 +126,6 @@ export async function action({request, params}: Route.ActionArgs) {
     return {error: "Unknown action"};
 }
 
-function timeAgo(date: Date) {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return "Now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}hr`;
-    return `${Math.floor(hours / 24)}d`;
-}
-
 export default function PostDetail() {
     const {post, userId} = useLoaderData<typeof loader>();
     const [isEditingCaption, setIsEditingCaption] = useState(false);
@@ -144,7 +134,6 @@ export default function PostDetail() {
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="flex flex-col items-center gap-3 p-4">
                 <div className="flex flex-row gap-4 items-center">
-
                     <Link to={`/profile/${post.userId}`} className="font-bold hover:underline">
                         {post.displayName}
                     </Link>
@@ -160,22 +149,38 @@ export default function PostDetail() {
                 </div>
 
                 <img
-                    className="w-full max-w-md border-2 border-black object-cover"
+                    className="w-full max-w-md border-2 border-black object-contain"
                     src={post.imageData}
                     alt={post.caption ?? "Workout post"}
                 />
 
-                <div className="flex flex-row gap-4">
+                <div className="flex flex-row gap-3">
                     <Form method="post">
                         <input type="hidden" name="intent" value="like" />
-                        <button type="submit">
+                        <button
+                            type="submit"
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-sm font-bold transition-colors
+                                ${post.likedByMe
+                                ? "bg-red-500/20 border-red-500 text-red-400"
+                                : "border-neutral-500 text-neutral-300 hover:border-neutral-400"
+                            }`}
+                        >
                             {post.likedByMe ? "🔥" : "🤍"} {post.likeCount}
                         </button>
                     </Form>
-                    <p>🗨️ {post.commentCount}</p>
+
+                    <div className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold">
+                        🗨️ {post.commentCount}
+                    </div>
+
                     <Form method="post">
                         <input type="hidden" name="intent" value="repost" />
-                        <button type="submit">🔗 {post.repostCount}</button>
+                        <button
+                            type="submit"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold transition-colors hover:border-neutral-400"
+                        >
+                            🔗 {post.repostCount}
+                        </button>
                     </Form>
                 </div>
 
@@ -189,11 +194,14 @@ export default function PostDetail() {
                         <input
                             name="caption"
                             defaultValue={post.caption ?? ""}
-                            className="flex-1 border-b bg-transparent text-neutral-200"
+                            className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
                             autoFocus
+                            autoComplete="off"
                         />
-                        <button type="submit">Save</button>
-                        <button type="button" onClick={() => setIsEditingCaption(false)}>
+                        <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
+                            Save
+                        </button>
+                        <button type="button" onClick={() => setIsEditingCaption(false)} className="border rounded-md px-4 py-2">
                             Cancel
                         </button>
                     </Form>
@@ -226,9 +234,12 @@ export default function PostDetail() {
                         key={`comment-input-${post.comments.length}`}
                         name="text"
                         placeholder="Add a comment..."
-                        className="flex-1 border-b bg-transparent text-neutral-200"
+                        className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
+                        autoComplete="off"
                     />
-                    <button type="submit">Post</button>
+                    <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
+                        Post
+                    </button>
                 </Form>
             </div>
 

@@ -129,11 +129,13 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId, onRep
                             key={`reply-input-${comment.id}-${repliesFor(comment.id).length}`}
                             name="text"
                             placeholder={`Reply to ${comment.displayName}...`}
-                            className="flex-1 border-b bg-transparent text-neutral-200 text-sm"
+                            className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200 text-sm"
                             autoFocus
                             autoComplete="off"
                         />
-                        <button type="submit">Post</button>
+                        <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700 text-sm">
+                            Post
+                        </button>
                     </Form>
                 )}
 
