@@ -1,25 +1,37 @@
 import {Link} from "react-router";
+import {useState, useEffect} from "react";
 
 type Props = {
     year: number;
-    month: number; // 1-12
-    loggedDates: string[]; // "YYYY-MM-DD" strings
-    selectedDate: string | null; // "YYYY-MM-DD" or null
-    today: string; // "YYYY-MM-DD" — computed server-side, single source of truth
+    month: number;
+    loggedDates: string[];
+    selectedDate: string | null;
+    today: string; // server's guess — used only until the client corrects it
 };
 
 function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
+function getLocalTodayStr() {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}: Props) {
+    const [clientToday, setClientToday] = useState(today);
+
+    useEffect(() => {
+        setClientToday(getLocalTodayStr());
+    }, []);
+
     const loggedSet = new Set(loggedDates);
 
     const firstOfMonth = new Date(year, month - 1, 1);
     const daysInMonth = new Date(year, month, 0).getDate();
-    const startWeekday = firstOfMonth.getDay(); // 0 = Sunday
+    const startWeekday = firstOfMonth.getDay();
 
-    const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
+    const [todayYear, todayMonth, todayDay] = clientToday.split("-").map(Number);
     const isCurrentMonth = todayYear === year && todayMonth === month;
 
     const monthLabel = firstOfMonth.toLocaleString("default", {month: "long", year: "numeric"});
@@ -83,7 +95,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}:
                 })}
             </div>
 
-            {selectedDate && selectedDate !== today && (
+            {selectedDate && selectedDate !== clientToday && (
                 <div className="flex justify-center mt-2">
                     <Link to="/log" className="text-xs text-neutral-400 underline">
                         Clear selection

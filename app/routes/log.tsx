@@ -1,5 +1,6 @@
 import type {Route} from "./+types/log"
 import {useEffect, useState} from "react";
+import {useNavigate} from "react-router";
 import {useWorkoutFlow} from "~/features/workoutFlow/useWorkoutFlow";
 import type {WorkoutEntry} from "~/types/workoutEntry";
 import type {Exercise} from "~/types/exercise";
@@ -13,6 +14,7 @@ import {Form, useFetcher, useLoaderData} from "react-router";
 import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
 import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server";
+
 
 
 
@@ -118,6 +120,7 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 
 export default function Log(){
     const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr} = useLoaderData<typeof loader>();
+    const navigate = useNavigate();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
@@ -144,6 +147,23 @@ export default function Log(){
     });
 
     useEffect(() => {
+        const url = new URL(window.location.href);
+        const hasDateParam = url.searchParams.has("date");
+
+        if (!hasDateParam) {
+            const now = new Date();
+            const localYear = now.getFullYear();
+            const localMonth = now.getMonth() + 1;
+            const localDay = now.getDate();
+            const localDateStr = `${localYear}-${String(localMonth).padStart(2, "0")}-${String(localDay).padStart(2, "0")}`;
+
+            if (localDateStr !== date) {
+                navigate(`?year=${localYear}&month=${localMonth}&date=${localDateStr}`, {replace: true});
+            }
+        }
+    }, []);
+
+    useEffect(() => {
         if (fetcher.data?.error && fetcher.data?.tempId) {
             setWorkouts((prev) => prev.filter((w) => w.id !== fetcher.data.tempId));
         }
@@ -154,6 +174,7 @@ export default function Log(){
             );
         }
     }, [fetcher.data]);
+
 
     function addWorkout(workout: WorkoutEntry) {
         setWorkouts((prev) => [workout, ...prev])
