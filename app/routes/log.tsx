@@ -24,7 +24,7 @@ const HARDCODED_EXERCISES: Exercise[] = [
     {id: "5", name: "Hip Thrust", category: "lower", muscle: "glutes"},
     {id: "6", name: "Machine Leg Curl", category: "lower", muscle: "hamstrings"},
     {id: "7", name: "Machine Leg Extension", category: "lower", muscle: "quads"},
-    {id: "8", name: "Calve Raise", category: "lower", muscle: "calves"},
+    {id: "8", name: "Sitting Calve Raise", category: "lower", muscle: "calves"},
     {id: "9", name: "Run", category: "cardio"},
     {id: "10", name: "Stair Master", category: "cardio"},
 ];
