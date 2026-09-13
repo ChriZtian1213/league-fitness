@@ -25,9 +25,25 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
     const [time, setTime] = useState("");
 
     const weightInputRef = useRef<HTMLInputElement>(null);
+    const repsInputRef = useRef<HTMLInputElement>(null);
     const distanceInputRef = useRef<HTMLInputElement>(null);
+    const timeInputRef = useRef<HTMLInputElement>(null);
 
     const validTime = /^\d+:\d{2}$/.test(time)
+
+    function handleWeightKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            repsInputRef.current?.focus();
+        }
+    }
+
+    function handleDistanceKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            timeInputRef.current?.focus();
+        }
+    }
 
     function normalizeTime(input: string){
         const trimmed = input.trim();
@@ -147,10 +163,12 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                         placeholder="Distance (mi)"
                         value={distance}
                         onChange={(e) => setDistance(e.target.value)}
+                        onKeyDown={handleDistanceKeyDown}
                         className={inputClass}
                     />
 
                     <input
+                        ref={timeInputRef}
                         type="text"
                         placeholder="Time (mm:ss)"
                         value={time}
@@ -167,12 +185,14 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                         placeholder="Weight (lbs)"
                         value={weight}
                         onChange={(e) => setWeight(e.target.value)}
+                        onKeyDown={handleWeightKeyDown}
                         className={inputClass}
                     />
 
                     <p className="font-bold">x</p>
 
                     <input
+                        ref={repsInputRef}
                         type="number"
                         placeholder="Reps"
                         value={reps}
