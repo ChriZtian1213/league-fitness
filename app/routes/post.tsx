@@ -7,6 +7,7 @@ import {getPostById, toggleLike, toggleRepost, addComment, toggleCommentLike, de
 import {getUserById} from "~/server/user.server";
 import {CommentThread} from "~/components/CommentThread";
 import {timeAgo} from "~/utils/timeAgo";
+import {useNavigate} from "react-router";
 
 export async function loader({request, params}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -129,9 +130,13 @@ export async function action({request, params}: Route.ActionArgs) {
 export default function PostDetail() {
     const {post, userId} = useLoaderData<typeof loader>();
     const [isEditingCaption, setIsEditingCaption] = useState(false);
+    const navigate = useNavigate();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
+            <div className="flex items-center px-4 pt-4">
+                <button onClick={() => navigate(-1)} className="text-2xl">←</button>
+            </div>
             <div className="flex flex-col items-center gap-3 p-4">
                 <div className="flex flex-row gap-4 items-center">
                     <Link to={`/profile/${post.userId}`} className="font-bold hover:underline">

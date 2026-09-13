@@ -2,7 +2,7 @@ import { connectDB } from "./db.server";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 import crypto from "crypto";
-import { createNotification } from "~/server/notification";
+import { createNotification } from "~/server/notification.server";
 
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60s
 

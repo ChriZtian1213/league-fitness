@@ -1,8 +1,7 @@
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
 import {getFollowedObjectIds} from "~/server/user.server";
-import { createNotification } from "~/server/notification";
-
+import { createNotification } from "~/server/notification.server";
 export type FeedScope = "following" | "global";
 
 export interface CreatePostInput {
@@ -187,7 +186,7 @@ export async function toggleRepost(userId: string, postId: string) {
 
     const post = await db
         .collection("posts")
-        .findOne({ _id: postObjectId }, { projection: { repostedBy: 1 } });
+        .findOne({ _id: postObjectId }, { projection: { repostedBy: 1, userId: 1 } });
     if (!post) throw new Error("Post not found");
 
     const alreadyReposted = (post.repostedBy ?? []).some((id: ObjectId) =>
@@ -200,6 +199,15 @@ export async function toggleRepost(userId: string, postId: string) {
             ? { $pull: { repostedBy: userObjectId } }
             : { $addToSet: { repostedBy: userObjectId } }
     );
+
+    if (!alreadyReposted) {
+        const fromUser = await db
+            .collection("users")
+            .findOne({ _id: userObjectId }, { projection: { displayName: 1 } });
+        if (fromUser) {
+            await createNotification(post.userId.toString(), userId, fromUser.displayName, "repost", postId);
+        }
+    }
 }
 
 export async function deleteComment(
@@ -396,3 +404,4 @@ export async function getPostById(viewerUserId: string, postId: string) {
         isOwnPost: post.userId.equals(viewerObjectId),
     };
 }
+

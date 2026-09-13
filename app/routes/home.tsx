@@ -10,7 +10,7 @@ import {
 } from "~/server/post.server";
 import {PostCard} from "~/components/PostCard";
 import {CooldownTimer} from "~/components/CooldownTimer";
-import {getUnreadNotificationCount} from "~/server/notification";
+import {getUnreadNotificationCount} from "~/server/notification.server";
 import {getUnreadMessageCount} from "~/server/message.server";
 
 export async function loader({request}: Route.LoaderArgs) {

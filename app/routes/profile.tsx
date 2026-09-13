@@ -265,58 +265,12 @@ export default function Profile() {
 
             {isOwnProfile && isEditing && (
                 <div className="max-w-md mx-auto px-4 pb-4">
-                    <button
-                        type="button"
-                        onClick={() => setShowPasswordForm((v) => !v)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors mb-2"
+                    <Link
+                        to="/reset-password"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors w-fit"
                     >
-                        {showPasswordForm ? "Cancel password change" : "Change password"}
-                    </button>
-
-                    {showPasswordForm && (
-                        <Form
-                            method="post"
-                            className="flex flex-col gap-3"
-                        >
-                            <input type="hidden" name="intent" value="changePassword" />
-
-                            <label className="text-sm text-neutral-400">
-                                Current password
-                                <input
-                                    name="currentPassword"
-                                    type="password"
-                                    required
-                                    className="block w-full mt-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
-                                />
-                            </label>
-
-                            <label className="text-sm text-neutral-400">
-                                New password
-                                <input
-                                    name="newPassword"
-                                    type="password"
-                                    required
-                                    minLength={8}
-                                    className="block w-full mt-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
-                                />
-                            </label>
-
-                            <label className="text-sm text-neutral-400">
-                                Confirm new password
-                                <input
-                                    name="confirmNewPassword"
-                                    type="password"
-                                    required
-                                    minLength={8}
-                                    className="block w-full mt-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
-                                />
-                            </label>
-
-                            <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
-                                Update Password
-                            </button>
-                        </Form>
-                    )}
+                        Change password
+                    </Link>
                 </div>
             )}
 
