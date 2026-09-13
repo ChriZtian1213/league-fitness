@@ -3,10 +3,19 @@ import Cropper from "react-easy-crop";
 
 type Area = {x: number; y: number; width: number; height: number};
 
+export type ShapeOption = {
+    key: string;
+    aspect: number;
+    cropShape: "round" | "rect";
+    label: string;
+};
+
 type Props = {
     imageSrc: string;
+    shapeOptions: ShapeOption[];
+    initialShapeKey?: string;
     onCancel: () => void;
-    onCropDone: (croppedDataUrl: string) => void;
+    onCropDone: (croppedDataUrl: string, shapeKey: string) => void;
 };
 
 function createImage(url: string): Promise<HTMLImageElement> {
@@ -41,22 +50,31 @@ async function getCroppedImage(imageSrc: string, cropArea: Area): Promise<string
     return canvas.toDataURL("image/jpeg", 0.9);
 }
 
-export function ImageCropModal({imageSrc, onCancel, onCropDone}: Props) {
+export function ImageCropModal({imageSrc, shapeOptions, initialShapeKey, onCancel, onCropDone}: Props) {
+    const [shapeKey, setShapeKey] = useState(initialShapeKey ?? shapeOptions[0].key);
     const [crop, setCrop] = useState({x: 0, y: 0});
     const [zoom, setZoom] = useState(1);
     const [croppedArea, setCroppedArea] = useState<Area | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
+    const activeShape = shapeOptions.find((s) => s.key === shapeKey) ?? shapeOptions[0];
+
     const onCropComplete = useCallback((_croppedAreaPercent: Area, croppedAreaPixels: Area) => {
         setCroppedArea(croppedAreaPixels);
     }, []);
+
+    function handleShapeSelect(key: string) {
+        setShapeKey(key);
+        setCrop({x: 0, y: 0});
+        setZoom(1);
+    }
 
     async function handleSave() {
         if (!croppedArea) return;
         setIsSaving(true);
         try {
             const dataUrl = await getCroppedImage(imageSrc, croppedArea);
-            onCropDone(dataUrl);
+            onCropDone(dataUrl, shapeKey);
         } finally {
             setIsSaving(false);
         }
@@ -64,13 +82,30 @@ export function ImageCropModal({imageSrc, onCancel, onCropDone}: Props) {
 
     return (
         <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
+            <div className="flex justify-center gap-2 text-sm mb-3">
+                {shapeOptions.map((option) => (
+                    <button
+                        key={option.key}
+                        type="button"
+                        onClick={() => handleShapeSelect(option.key)}
+                        className={`px-3 py-1 rounded-md border ${
+                            shapeKey === option.key
+                                ? "bg-neutral-600 border-neutral-400 text-white"
+                                : "border-neutral-500 text-neutral-300"
+                        }`}
+                    >
+                        {option.label}
+                    </button>
+                ))}
+            </div>
+
             <div className="relative w-full max-w-sm h-80 bg-neutral-900">
                 <Cropper
                     image={imageSrc}
                     crop={crop}
                     zoom={zoom}
-                    aspect={1}
-                    cropShape="round"
+                    aspect={activeShape.aspect}
+                    cropShape={activeShape.cropShape}
                     onCropChange={setCrop}
                     onZoomChange={setZoom}
                     onCropComplete={onCropComplete}
@@ -91,7 +126,7 @@ export function ImageCropModal({imageSrc, onCancel, onCropDone}: Props) {
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="border border-neutral-500 rounded-md px-4 py-2 text-neutral-200 bg-neutral-700"
+                    className="border border-neutral-500 rounded-md px-4 py-2 text-neutral-200"
                 >
                     Cancel
                 </button>

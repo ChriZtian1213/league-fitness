@@ -263,6 +263,7 @@ export default function Profile() {
             {rawImageSrc && (
                 <ImageCropModal
                     imageSrc={rawImageSrc}
+                    shapeOptions={[{key: "circle", aspect: 1, cropShape: "round", label: "Profile Photo"}]}
                     onCancel={() => setRawImageSrc(null)}
                     onCropDone={(dataUrl) => {
                         setCroppedImage(dataUrl);
