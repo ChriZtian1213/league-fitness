@@ -1,6 +1,6 @@
 import type { Route } from "./+types/profile";
-import {Form, Link, useLoaderData, useNavigate} from "react-router";
-import {useState} from "react";
+import {Form, Link, useLoaderData, useNavigate, useActionData} from "react-router";
+import {useEffect, useState} from "react";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
 import {
@@ -135,6 +135,7 @@ export default function Profile() {
         isOwnProfile, viewerIsFollowing, loggedDates, year, month, todayDateStr,
     } = useLoaderData<typeof loader>();
 
+    const actionData = useActionData<typeof action>();
     const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts" | "calendar">("posts");
@@ -152,6 +153,12 @@ export default function Profile() {
         reader.onload = () => setRawImageSrc(reader.result as string);
         reader.readAsDataURL(file);
     }
+
+    useEffect(() => {
+        if (actionData?.ok) {
+            setIsEditing(false);
+        }
+    }, [actionData]);
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -192,7 +199,7 @@ export default function Profile() {
                     alt={`${user?.displayName ?? "User"}'s profile picture`}
                 />
                 <div className="flex flex-col p-2 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-col gap-1">
                         <p className="text-2xl font-bold leading-tight">{user?.displayName}</p>
                         {!isOwnProfile && (
                             <Form method="post">
@@ -203,8 +210,8 @@ export default function Profile() {
                                 />
                                 <button
                                     type="submit"
-                                    className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-bold transition-colors
-                            ${viewerIsFollowing
+                                    className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-bold transition-colors w-fit
+            ${viewerIsFollowing
                                         ? "border-neutral-500 text-neutral-400 hover:border-neutral-400"
                                         : "bg-blue-500/20 border-blue-500 text-blue-400"
                                     }`}
