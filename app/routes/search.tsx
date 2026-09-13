@@ -1,5 +1,6 @@
 import type {Route} from "./+types/search";
-import {Form, Link, useLoaderData} from "react-router";
+import {useEffect} from "react";
+import {Link, useFetcher, useSearchParams} from "react-router";
 import {requireUserId} from "~/server/session.server";
 import {searchUsers} from "~/server/user.server";
 import {NavBar} from "~/components/NavBar";
@@ -16,7 +17,22 @@ export async function loader({request}: Route.LoaderArgs) {
 }
 
 export default function Search() {
-    const {query, results} = useLoaderData<typeof loader>();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const fetcher = useFetcher<typeof loader>();
+
+    const initialQuery = searchParams.get("q") ?? "";
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            const q = searchParams.get("q") ?? "";
+            fetcher.load(`/search?q=${encodeURIComponent(q)}`);
+        }, 250);
+
+        return () => clearTimeout(timeout);
+    }, [searchParams]);
+
+    const query = fetcher.data?.query ?? initialQuery;
+    const results = fetcher.data?.results ?? [];
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -27,15 +43,19 @@ export default function Search() {
                 Search
             </div>
 
-            <Form method="get" className="flex justify-center px-4 mb-6">
+            <div className="flex justify-center px-4 mb-6">
                 <input
-                    name="q"
-                    defaultValue={query}
+                    defaultValue={initialQuery}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        setSearchParams(value ? {q: value} : {}, {replace: true});
+                    }}
                     placeholder="Search by username..."
-                    className="w-full max-w-md border-b bg-transparent text-neutral-200 p-2"
+                    className="w-full max-w-md border rounded-md px-3 py-2 bg-transparent text-neutral-200"
                     autoFocus
+                    autoComplete="off"
                 />
-            </Form>
+            </div>
 
             <div className="flex flex-col items-center gap-2 px-4">
                 {query.trim() && results.length === 0 && (
@@ -51,7 +71,7 @@ export default function Search() {
                         <img
                             src={user.profilePicture || "/favicon.ico"}
                             alt={`${user.displayName}'s profile picture`}
-                            className="w-10 h-10 rounded-full border border-black"
+                            className="w-10 h-10 rounded-full object-cover border border-black"
                         />
                         <p className="font-bold">{user.displayName}</p>
                     </Link>
