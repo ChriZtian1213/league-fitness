@@ -3,6 +3,15 @@ import { ObjectId } from "mongodb";
 import { getFollowedObjectIds, getMutualFollowObjectIds } from "./user.server";
 import type { Category, Muscle} from "~/types/workout";
 
+export interface ExerciseOverviewEntry {
+    exercise: string;
+    category: string | null;
+    muscle: string | null;
+    value: number;
+    displayName: string;
+    userId: string;
+}
+
 export interface WorkoutInput {
     exercise: string;
     category: Category;
@@ -22,6 +31,249 @@ export interface ExerciseCatalogEntry {
     category: Category;
     muscle: Muscle;
     exercise: string;
+}
+
+export interface CardioOverviewEntry {
+    exercise: string;
+    value: number;
+    displayValue: string;
+    displayName: string;
+    userId: string;
+}
+
+// One card per cardio exercise: Stair Master ranks by steps, everything
+// else ranks by distance. Kept in exercise-name order (not sorted by
+// value) since miles and steps aren't comparable across different rows.
+export async function getCardioExerciseOverview(
+    period: LeaderboardPeriod,
+    scope: LeaderboardScope,
+    userId: string
+): Promise<CardioOverviewEntry[]> {
+    const db = await connectDB();
+
+    const match: Record<string, any> = { category: "cardio" };
+
+    if (period !== "all") {
+        const since = new Date();
+        if (period === "week") since.setDate(since.getDate() - 7);
+        if (period === "month") since.setMonth(since.getMonth() - 1);
+        match.createdAt = { $gte: since };
+    }
+    if (scope === "following") {
+        const followedIds = await getFollowedObjectIds(userId);
+        match.userId = { $in: [...followedIds, new ObjectId(userId)] };
+    }
+    if (scope === "mutual") {
+        const mutualIds = await getMutualFollowObjectIds(userId);
+        match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
+    }
+
+    const docs = await db.collection("workouts").find(match).toArray();
+
+    const verifiedUsers = await db
+        .collection("users")
+        .find({ emailVerified: true })
+        .project({ displayName: 1 })
+        .toArray();
+    const verifiedMap = new Map(
+        (verifiedUsers as any[]).map((u) => [u._id.toString(), u.displayName])
+    );
+
+    const bestByExercise = new Map<string, {value: number; displayValue: string; userId: ObjectId}>();
+
+    for (const doc of docs as any[]) {
+        if (!verifiedMap.has(doc.userId.toString())) continue;
+
+        const isStairMaster = doc.exercise === "Stair Master";
+        const value = isStairMaster ? doc.steps : doc.distance;
+        if (value == null) continue;
+
+        const displayValue = isStairMaster ? `${value} steps` : `${value} mi`;
+
+        const existing = bestByExercise.get(doc.exercise);
+        if (!existing || value > existing.value) {
+            bestByExercise.set(doc.exercise, {value, displayValue, userId: doc.userId});
+        }
+    }
+
+    return [...bestByExercise.entries()]
+        .map(([exercise, data]) => ({
+            exercise,
+            value: data.value,
+            displayValue: data.displayValue,
+            displayName: verifiedMap.get(data.userId.toString()) ?? "Unknown",
+            userId: data.userId.toString(),
+        }))
+        .sort((a, b) => a.exercise.localeCompare(b.exercise));
+}
+
+export type CardioMetric = "distance" | "speed" | "steps";
+
+export interface CardioLeaderboardEntry {
+    userId: string;
+    displayName: string;
+    value: number;
+    displayValue: string;
+}
+
+function parseTimeToSeconds(time: string): number {
+    const [minutes, seconds] = time.split(":").map(Number);
+    return (minutes || 0) * 60 + (seconds || 0);
+}
+
+// Full ranking within one specific cardio exercise. Stair Master only
+// ever ranks by steps; every other exercise ranks by distance or speed.
+export async function getCardioLeaderboard(
+    period: LeaderboardPeriod,
+    scope: LeaderboardScope,
+    userId: string,
+    exercise: string,
+    metric: CardioMetric
+): Promise<CardioLeaderboardEntry[]> {
+    const db = await connectDB();
+
+    const match: Record<string, any> = { category: "cardio", exercise };
+
+    if (period !== "all") {
+        const since = new Date();
+        if (period === "week") since.setDate(since.getDate() - 7);
+        if (period === "month") since.setMonth(since.getMonth() - 1);
+        match.createdAt = { $gte: since };
+    }
+    if (scope === "following") {
+        const followedIds = await getFollowedObjectIds(userId);
+        match.userId = { $in: [...followedIds, new ObjectId(userId)] };
+    }
+    if (scope === "mutual") {
+        const mutualIds = await getMutualFollowObjectIds(userId);
+        match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
+    }
+
+    const docs = await db.collection("workouts").find(match).toArray();
+
+    const verifiedUsers = await db
+        .collection("users")
+        .find({ emailVerified: true })
+        .project({ displayName: 1 })
+        .toArray();
+    const verifiedMap = new Map(
+        (verifiedUsers as any[]).map((u) => [u._id.toString(), u.displayName])
+    );
+
+    const bestByUser = new Map<string, {value: number; displayValue: string}>();
+
+    for (const doc of docs as any[]) {
+        const key = doc.userId.toString();
+        if (!verifiedMap.has(key)) continue;
+
+        let value: number | null = null;
+        let displayValue = "";
+
+        if (metric === "steps" && doc.steps != null) {
+            value = doc.steps;
+            displayValue = `${doc.steps} steps`;
+        } else if (metric === "distance" && doc.distance != null) {
+            value = doc.distance;
+            displayValue = `${doc.distance} mi`;
+        } else if (metric === "speed" && doc.distance != null && doc.time) {
+            const minutes = parseTimeToSeconds(doc.time) / 60;
+            if (minutes > 0) {
+                const mph = doc.distance / (minutes / 60);
+                value = mph;
+                displayValue = `${mph.toFixed(1)} mph`;
+            }
+        }
+
+        if (value == null) continue;
+
+        const existing = bestByUser.get(key);
+        if (!existing || value > existing.value) {
+            bestByUser.set(key, {value, displayValue});
+        }
+    }
+
+    return [...bestByUser.entries()]
+        .map(([uid, data]) => ({
+            userId: uid,
+            displayName: verifiedMap.get(uid)!,
+            value: data.value,
+            displayValue: data.displayValue,
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 50);
+}
+
+// One card per lifting exercise: whoever currently holds the heaviest
+// single lift for that exercise. Sorted heaviest-value-first so the
+// biggest numbers stand out at the top of the list.
+export async function getLiftingExerciseOverview(
+    period: LeaderboardPeriod,
+    scope: LeaderboardScope,
+    userId: string,
+    category: string | null,
+    muscle: string | null
+): Promise<ExerciseOverviewEntry[]> {
+    const db = await connectDB();
+
+    const match: Record<string, any> = {
+        weight: { $exists: true, $ne: null },
+        reps: { $exists: true, $ne: null },
+    };
+
+    if (period !== "all") {
+        const since = new Date();
+        if (period === "week") since.setDate(since.getDate() - 7);
+        if (period === "month") since.setMonth(since.getMonth() - 1);
+        match.createdAt = { $gte: since };
+    }
+    if (scope === "following") {
+        const followedIds = await getFollowedObjectIds(userId);
+        match.userId = { $in: [...followedIds, new ObjectId(userId)] };
+    }
+    if (scope === "mutual") {
+        const mutualIds = await getMutualFollowObjectIds(userId);
+        match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
+    }
+    if (category) match.category = category;
+    if (muscle) match.muscle = muscle;
+
+    const pipeline = [
+        { $match: match },
+        {
+            $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                as: "user",
+            },
+        },
+        { $unwind: "$user" },
+        { $match: { "user.emailVerified": true } },
+        { $sort: { weight: -1, reps: -1 } },
+        {
+            $group: {
+                _id: "$exercise",
+                value: { $first: "$weight" },
+                userId: { $first: "$userId" },
+                displayName: { $first: "$user.displayName" },
+                category: { $first: "$category" },
+                muscle: { $first: "$muscle" },
+            },
+        },
+        { $sort: { value: -1 } },
+        { $limit: 100 },
+    ];
+
+    const results = await db.collection("workouts").aggregate(pipeline).toArray();
+
+    return (results as any[]).map((r) => ({
+        exercise: r._id,
+        category: r.category ?? null,
+        muscle: r.muscle ?? null,
+        value: r.value,
+        displayName: r.displayName,
+        userId: r.userId.toString(),
+    }));
 }
 
 export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
@@ -104,6 +356,9 @@ export async function getWorkoutsForUser(
     return docs.map((doc: any) => ({
         id: doc._id.toString(),
         exercise: doc.exercise,
+        category: doc.category,
+        muscle: doc.muscle,
+        steps: doc.steps,
         weight: doc.weight,
         reps: doc.reps,
         distance: doc.distance,
@@ -150,7 +405,6 @@ export interface LeaderboardEntry {
 export async function getLeaderboard(
     period: LeaderboardPeriod,
     scope: LeaderboardScope,
-    metric: LeaderboardMetric,
     userId: string,
     category: string | null,
     muscle: string | null,
@@ -184,35 +438,17 @@ export async function getLeaderboard(
     if (muscle) match.muscle = muscle;
     if (exercise) match.exercise = exercise;
 
-    let pipeline: any[];
-
-    if (metric === "heaviest") {
-        pipeline = [
-            { $match: match },
-            { $sort: { weight: -1, reps: -1 } },
-            {
-                $group: {
-                    _id: "$userId",
-                    value: { $first: "$weight" },
-                    exercise: { $first: "$exercise" },
-                },
+    const pipeline: any[] = [
+        { $match: match },
+        { $sort: { weight: -1, reps: -1 } },
+        {
+            $group: {
+                _id: "$userId",
+                value: { $first: "$weight" },
+                exercise: { $first: "$exercise" },
             },
-            { $sort: { value: -1 } },
-        ];
-    } else {
-        pipeline = [
-            { $match: match },
-            {
-                $group: {
-                    _id: "$userId",
-                    value: { $sum: { $multiply: ["$weight", "$reps"] } },
-                },
-            },
-            { $sort: { value: -1 } },
-        ];
-    }
-
-    pipeline.push(
+        },
+        { $sort: { value: -1 } },
         {
             $lookup: {
                 from: "users",
@@ -232,8 +468,8 @@ export async function getLeaderboard(
                 value: 1,
                 exercise: 1,
             },
-        }
-    );
+        },
+    ];
 
     const results = await db.collection("workouts").aggregate(pipeline).toArray();
     return results as LeaderboardEntry[];

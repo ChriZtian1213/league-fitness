@@ -14,54 +14,67 @@ function formatBest(best: WorkoutEntry): string {
     if (best.weight != null && best.reps != null) {
         return `${best.weight} lbs × ${best.reps}`;
     }
+    if (best.steps != null) {
+        return `${best.steps} steps`;
+    }
     return `${best.distance} mi in ${best.time}`;
 }
 
 export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Props) {
+    const isStairMaster = exercise.name === "Stair Master";
+
     const [weight, setWeight] = useState("");
     const [reps, setReps] = useState("");
 
     const [distance, setDistance] = useState("");
     const [time, setTime] = useState("");
+    const [steps, setSteps] = useState("");
 
     const weightInputRef = useRef<HTMLInputElement>(null);
     const repsInputRef = useRef<HTMLInputElement>(null);
     const distanceInputRef = useRef<HTMLInputElement>(null);
     const timeInputRef = useRef<HTMLInputElement>(null);
-
-    const validTime = /^\d+:\d{2}$/.test(time)
-
-    function handleWeightKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            repsInputRef.current?.focus();
-        }
-    }
-
-    function handleDistanceKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            timeInputRef.current?.focus();
-        }
-    }
+    const stepsInputRef = useRef<HTMLInputElement>(null);
 
     function normalizeTime(input: string){
         const trimmed = input.trim();
         if (/^\d+$/.test(trimmed)) {
             return `${trimmed}:00`;
         }
-
         if (/^\d+:\d{2}$/.test(trimmed)) {
             return trimmed;
         }
-
         return null;
     }
 
     function handleSubmit(): boolean {
-        const normalizedTime = normalizeTime(time);
+        if (isStairMaster) {
+            const stepsNumber = Number(steps);
+            if (!steps) {
+                alert("Please enter steps");
+                return false;
+            }
+            if (stepsNumber <= 0) {
+                alert("Steps must be greater than 0");
+                return false;
+            }
+
+            const workout: WorkoutEntry = {
+                id: crypto.randomUUID(),
+                exercise: exercise.name,
+                category: exercise.category,
+                muscle: exercise.muscle,
+                steps: stepsNumber,
+                createdAt: new Date()
+            }
+
+            onSubmit(workout);
+            setSteps("");
+            return true;
+        }
 
         if (exercise.category === "cardio"){
+            const normalizedTime = normalizeTime(time);
             const distanceNumber = Number(distance);
             if (!distance || !time){
                 alert("Please fill in all fields");
@@ -124,6 +137,13 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         }
     }
 
+    function handleWeightKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            repsInputRef.current?.focus();
+        }
+    }
+
     function handleRepsKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -133,11 +153,27 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         }
     }
 
+    function handleDistanceKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            timeInputRef.current?.focus();
+        }
+    }
+
     function handleTimeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
         if (e.key === "Enter") {
             e.preventDefault();
             if (handleSubmit()) {
-                weightInputRef.current?.focus();
+                distanceInputRef.current?.focus();
+            }
+        }
+    }
+
+    function handleStepsKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (handleSubmit()) {
+                stepsInputRef.current?.focus();
             }
         }
     }
@@ -147,7 +183,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
     return (
         <div className={"flex flex-col items-center gap-2"}>
 
-            <h2 className={"text-xl font-bold"}>{exercise.name}</h2>
+            <h2 className={"text-2xl font-bold"}>{exercise.name}</h2>
 
             {personalBest && (
                 <p className="text-sm text-yellow-400 text-center">
@@ -155,7 +191,19 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 </p>
             )}
 
-            {exercise.category === "cardio" ? (
+            {isStairMaster ? (
+                <div className="flex gap-2">
+                    <input
+                        ref={stepsInputRef}
+                        type="number"
+                        placeholder="Steps"
+                        value={steps}
+                        onChange={(e) => setSteps(e.target.value)}
+                        onKeyDown={handleStepsKeyDown}
+                        className={inputClass}
+                    />
+                </div>
+            ) : exercise.category === "cardio" ? (
                 <div className="flex gap-2">
                     <input
                         ref={distanceInputRef}

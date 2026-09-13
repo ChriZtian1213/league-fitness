@@ -30,6 +30,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}:
     const prevYear = month === 1 ? year - 1 : year;
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
+    const isDifferentMonth = todayYear !== year || todayMonth !== month;
 
     const cells: (number | null)[] = [
         ...Array(startWeekday).fill(null),
@@ -85,7 +86,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today}:
                 })}
             </div>
 
-            {selectedDate && selectedDate !== clientToday && (
+            {(isDifferentMonth || (selectedDate && selectedDate !== clientToday)) && (
                 <div className="flex justify-center mt-2">
                     <Link to="/log" className="text-xs text-neutral-400 underline">
                         Clear selection

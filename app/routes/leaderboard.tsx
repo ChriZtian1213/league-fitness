@@ -1,21 +1,37 @@
 import type { Route } from "./+types/leaderboard";
-import { Link, useLoaderData } from "react-router";
+import { useEffect } from "react";
+import { Link, useLoaderData, useSearchParams } from "react-router";
 import { requireUserId } from "~/server/session.server";
 import { getUserById } from "~/server/user.server";
 import {
     getLeaderboard,
     getExerciseCatalog,
+    getLiftingExerciseOverview,
+    getCardioExerciseOverview,
+    getCardioLeaderboard,
     type LeaderboardPeriod,
     type LeaderboardScope,
-    type LeaderboardMetric,
+    type CardioMetric,
 } from "~/server/workout.server";
 import { NavBar } from "~/components/NavBar";
 import type {Category} from "~/types/workout";
+
+function rankLabel(index: number): string {
+    if (index === 0) return "🥇";
+    if (index === 1) return "🥈";
+    if (index === 2) return "🥉";
+    return `#${index + 1}`;
+}
+
+function capitalize(s: string) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
     const userId = await requireUserId(request);
     const user = await getUserById(userId);
     const url = new URL(request.url);
+    const overviewSearch = url.searchParams.get("q") ?? "";
 
     const requestedPeriod = url.searchParams.get("period");
     const period: LeaderboardPeriod =
@@ -27,20 +43,24 @@ export async function loader({ request }: Route.LoaderArgs) {
     const scope: LeaderboardScope =
         requestedScope === "following" || requestedScope === "mutual" ? requestedScope : "global";
 
-    const requestedMetric = url.searchParams.get("metric");
-    const metric: LeaderboardMetric =
-        requestedMetric === "volume" ? "volume" : "heaviest";
+    const requestedMode = url.searchParams.get("mode");
+    const mode: "lifting" | "cardio" = requestedMode === "cardio" ? "cardio" : "lifting";
 
     const category = url.searchParams.get("category");
     const muscle = url.searchParams.get("muscle");
     const exercise = url.searchParams.get("exercise");
 
-    const [leaderboard, catalog] = await Promise.all([
-        getLeaderboard(period, scope, metric, userId, category, muscle, exercise),
-        getExerciseCatalog(),
-    ]);
+    const requestedCardioMetric = url.searchParams.get("cardioMetric");
 
-    const categories = Array.from(new Set(catalog.map((c) => c.category).filter((c): c is Category => !!c))).sort();
+    const catalog = await getExerciseCatalog();
+
+    const categories = Array.from(
+        new Set(
+            catalog
+                .map((c) => c.category)
+                .filter((c): c is Category => !!c && c !== "cardio")
+        )
+    ).sort();
 
     const musclesForCategory = category
         ? Array.from(
@@ -54,6 +74,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
     const exercisesForFilter = catalog
         .filter((c) => {
+            if (c.category === "cardio") return false;
             if (category && c.category !== category) return false;
             if (muscle && c.muscle !== muscle) return false;
             return true;
@@ -61,23 +82,47 @@ export async function loader({ request }: Route.LoaderArgs) {
         .map((c) => c.exercise);
     const uniqueExercises = Array.from(new Set(exercisesForFilter)).sort();
 
+    let leaderboard: any[] = [];
+    let liftingOverview: any[] = [];
+    let cardioOverview: any[] = [];
+    let cardioMetric: CardioMetric = "distance";
+
+    if (mode === "lifting") {
+        if (exercise) {
+            leaderboard = await getLeaderboard(period, scope, userId, category, muscle, exercise);
+        } else {
+            liftingOverview = await getLiftingExerciseOverview(period, scope, userId, category, muscle);
+            if (overviewSearch.trim()) {
+                liftingOverview = liftingOverview.filter((e) =>
+                    e.exercise.toLowerCase().includes(overviewSearch.toLowerCase())
+                );
+            }
+        }
+    } else {
+        if (exercise) {
+            const isStairMaster = exercise === "Stair Master";
+            cardioMetric = isStairMaster
+                ? "steps"
+                : requestedCardioMetric === "speed"
+                    ? "speed"
+                    : "distance";
+            leaderboard = await getCardioLeaderboard(period, scope, userId, exercise, cardioMetric);
+        } else {
+            cardioOverview = await getCardioExerciseOverview(period, scope, userId);
+            if (overviewSearch.trim()) {
+                cardioOverview = cardioOverview.filter((e) =>
+                    e.exercise.toLowerCase().includes(overviewSearch.toLowerCase())
+                );
+            }
+        }
+    }
+
     return {
-        leaderboard, period, scope, metric,
+        leaderboard, liftingOverview, cardioOverview, cardioMetric,
+        period, scope, mode,
         category, muscle, exercise,
-        categories, musclesForCategory, exercises: uniqueExercises,
-        isVerified: user?.emailVerified ?? false,
+        categories, musclesForCategory, exercises: uniqueExercises, overviewSearch
     };
-}
-
-function capitalize(s: string) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function rankLabel(index: number): string {
-    if (index === 0) return "🥇";
-    if (index === 1) return "🥈";
-    if (index === 2) return "🥉";
-    return `#${index + 1}`;
 }
 
 function buildLink(
@@ -94,31 +139,27 @@ function buildLink(
 
 export default function Leaderboard() {
     const {
-        leaderboard, period, scope, metric,
+        leaderboard, liftingOverview, cardioOverview, cardioMetric,
+        period, scope, mode,
         category, muscle, exercise,
-        categories, musclesForCategory, exercises,
-        isVerified,
+        categories, musclesForCategory, exercises, overviewSearch
     } = useLoaderData<typeof loader>();
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const current = {
-        period, scope, metric,
+        period, scope, mode,
         category: category ?? "", muscle: muscle ?? "", exercise: exercise ?? "",
+        q: overviewSearch,
     };
+
+    const isStairMaster = exercise === "Stair Master";
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="font-bold text-4xl flex justify-center items-center p-3">
-                League Fitness
-            </div>
-            <div className="font-bold text-xl flex justify-center items-center p-3">
                 Leaderboard
             </div>
-
-            {!isVerified && (
-                <div className="bg-yellow-700 text-center py-2 text-sm mx-4 rounded-md mb-3">
-                    Verify your email to appear on the leaderboard.
-                </div>
-            )}
 
             <div className="flex justify-center gap-4 mb-3">
                 <Link to={buildLink(current, {period: "week"})} className={period === "week" ? "underline font-bold" : ""}>This Week</Link>
@@ -126,86 +167,181 @@ export default function Leaderboard() {
                 <Link to={buildLink(current, {period: "all"})} className={period === "all" ? "underline font-bold" : ""}>All Time</Link>
             </div>
 
-            <div className="flex justify-center gap-4 mb-3 text-sm flex-wrap">
-                <div className="flex flex-wrap border border-neutral-500 rounded-md overflow-hidden">
+            <div className="flex justify-center gap-2 mb-3 text-sm">
+                <div className="flex border border-neutral-500 rounded-md overflow-hidden">
                     <Link to={buildLink(current, {scope: "global"})} className={`px-3 py-1 text-center ${scope === "global" ? "bg-neutral-500" : ""}`}>Global</Link>
                     <Link to={buildLink(current, {scope: "following"})} className={`px-3 py-1 text-center ${scope === "following" ? "bg-neutral-500" : ""}`}>Following</Link>
                     <Link to={buildLink(current, {scope: "mutual"})} className={`px-3 py-1 text-center ${scope === "mutual" ? "bg-neutral-500" : ""}`}>Friends</Link>
                 </div>
-                <div className="flex flex-wrap border border-neutral-500 rounded-md overflow-hidden">
-                    <Link to={buildLink(current, {metric: "heaviest"})} className={`px-3 py-1 text-center ${metric === "heaviest" ? "bg-neutral-500" : ""}`}>Heaviest Lift</Link>
-                    <Link to={buildLink(current, {metric: "volume"})} className={`px-3 py-1 text-center ${metric === "volume" ? "bg-neutral-500" : ""}`}>Total Volume</Link>
+                <div className="flex border border-neutral-500 rounded-md overflow-hidden">
+                    <Link to={buildLink(current, {mode: "lifting", exercise: ""})} className={`px-3 py-1 text-center ${mode === "lifting" ? "bg-neutral-500" : ""}`}>Lifting</Link>
+                    <Link to={buildLink(current, {mode: "cardio", exercise: ""})} className={`px-3 py-1 text-center ${mode === "cardio" ? "bg-neutral-500" : ""}`}>Cardio</Link>
                 </div>
             </div>
 
-            {/* Cascading category -> muscle -> exercise filter */}
-            <div className="flex justify-center gap-2 mb-2 text-sm flex-wrap px-4">
-                <select
-                    className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
-                    value={category ?? ""}
-                    onChange={(e) => {
-                        window.location.href = buildLink(current, {category: e.target.value, muscle: "", exercise: ""});
-                    }}
-                >
-                    <option value="">All Categories</option>
-                    {categories.map((c) => <option key={c} value={c}>{capitalize(c)}</option>)}
-                </select>
+            {mode === "lifting" && !exercise && (
+                <>
+                    <div className="flex justify-center gap-2 mb-2 text-sm flex-wrap px-4 items-center">
+                        <select
+                            className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
+                            value={category ?? ""}
+                            onChange={(e) => {
+                                window.location.href = buildLink(current, {category: e.target.value, muscle: ""});
+                            }}
+                        >
+                            <option value="">All Categories</option>
+                            {categories.map((c) => <option key={c} value={c}>{capitalize(c)}</option>)}
+                        </select>
 
-                {category && musclesForCategory.length > 0 && (
-                    <select
-                        className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
-                        value={muscle ?? ""}
-                        onChange={(e) => {
-                            window.location.href = buildLink(current, {muscle: e.target.value, exercise: ""});
-                        }}
-                    >
-                        <option value="">All Muscles</option>
-                        {musclesForCategory.map((m) => <option key={m} value={m}>{capitalize(m)}</option>)}
-                    </select>
-                )}
+                        {category && musclesForCategory.length > 0 && (
+                            <select
+                                className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
+                                value={muscle ?? ""}
+                                onChange={(e) => {
+                                    window.location.href = buildLink(current, {muscle: e.target.value});
+                                }}
+                            >
+                                <option value="">All Muscles</option>
+                                {musclesForCategory.map((m) => <option key={m} value={m}>{capitalize(m)}</option>)}
+                            </select>
+                        )}
 
-                <select
-                    className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
-                    value={exercise ?? ""}
-                    onChange={(e) => {
-                        window.location.href = buildLink(current, {exercise: e.target.value});
-                    }}
-                >
-                    <option value="">All Exercises</option>
-                    {exercises.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
-            </div>
+                        {(category || muscle || overviewSearch) && (
+                            <Link
+                                to={buildLink(current, {category: "", muscle: "", q: ""})}
+                                className="text-xs text-neutral-400 underline"
+                            >
+                                Clear
+                            </Link>
+                        )}
 
-            {(category || muscle || exercise) && (
-                <div className="flex justify-center mb-6">
-                    <Link
-                        to={buildLink(current, {category: "", muscle: "", exercise: ""})}
-                        className="text-xs text-neutral-400 underline"
-                    >
-                        Clear filters
-                    </Link>
+                    </div>
+                    <div className="flex justify-center px-4 mb-3">
+                        <input
+                            key={overviewSearch}
+                            defaultValue={overviewSearch}
+                            onChange={(e) => {
+                                const params = new URLSearchParams(searchParams);
+                                if (e.target.value) params.set("q", e.target.value);
+                                else params.delete("q");
+                                setSearchParams(params, {replace: true});
+                            }}
+                            placeholder="Search exercises..."
+                            className="w-full max-w-md border rounded-md px-3 py-2 bg-transparent text-neutral-200"
+                            autoComplete="off"
+                        />
+                    </div>
+
+                    <div className="flex justify-between w-full max-w-md mx-auto px-4 text-xs text-neutral-400 mb-1">
+                        <span>Exercise</span>
+                        <span>User — Weight</span>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2 px-4">
+                        {liftingOverview.length === 0 && <p>No matching logs for this filter.</p>}
+                        {liftingOverview.map((entry) => (
+                            <Link
+                                key={entry.exercise}
+                                to={buildLink(current, {exercise: entry.exercise})}
+                                className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
+                            >
+                                <span className="font-bold">{entry.exercise}</span>
+                                <span>{entry.displayName} — {entry.value} lbs</span>
+                            </Link>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {mode === "lifting" && exercise && (
+                <div className="flex flex-col items-center gap-2 px-4">
+                    <div className="flex justify-between w-full max-w-md items-center mb-2">
+                        <p className="font-bold text-lg">{exercise}</p>
+                        <Link to={buildLink(current, {exercise: ""})} className="text-xs text-neutral-400 underline">
+                            Back to all exercises
+                        </Link>
+                    </div>
+                    {leaderboard.length === 0 && <p>No logs for this exercise yet.</p>}
+                    {leaderboard.map((entry: any, index: number) => (
+                        <Link
+                            key={entry.userId}
+                            to={`/profile/${entry.userId}`}
+                            className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
+                        >
+                            <span>{rankLabel(index)} {entry.displayName}</span>
+                            <span>{entry.value.toLocaleString()} lbs</span>
+                        </Link>
+                    ))}
                 </div>
             )}
 
-            <div className="flex flex-col items-center gap-2 px-4">
-                {leaderboard.length === 0 && <p>No matching logs for this filter.</p>}
+            {mode === "cardio" && !exercise && (
+                <>
+                    <div className="flex justify-center px-4 mb-3">
+                        <input
+                            defaultValue={overviewSearch}
+                            onChange={(e) => {
+                                const params = new URLSearchParams(searchParams);
+                                if (e.target.value) params.set("q", e.target.value);
+                                else params.delete("q");
+                                setSearchParams(params, {replace: true});
+                            }}
+                            placeholder="Search exercises..."
+                            className="w-full max-w-md border rounded-md px-3 py-2 bg-transparent text-neutral-200"
+                            autoComplete="off"
+                        />
+                    </div>
 
-                {leaderboard.map((entry, index) => (
-                    <Link
-                        key={entry.userId}
-                        to={`/profile/${entry.userId}`}
-                        className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
-                    >
-                        <span>{rankLabel(index)} {entry.displayName}</span>
-                        <span>
-            {entry.value.toLocaleString()} lbs
-                            {metric === "heaviest" && entry.exercise && (
-                                <span className="text-neutral-400 text-sm"> — {entry.exercise}</span>
-                            )}
-        </span>
-                    </Link>
-                ))}
-            </div>
+                    <div className="flex justify-between w-full max-w-md mx-auto px-4 text-xs text-neutral-400 mb-1">
+                        <span>Exercise</span>
+                        <span>User — Best</span>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2 px-4">
+                        {cardioOverview.length === 0 && <p>No cardio logs yet.</p>}
+                        {cardioOverview.map((entry: any) => (
+                            <Link
+                                key={entry.exercise}
+                                to={buildLink(current, {exercise: entry.exercise})}
+                                className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
+                            >
+                                <span className="font-bold">{entry.exercise}</span>
+                                <span>{entry.displayName} — {entry.displayValue}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {mode === "cardio" && exercise && (
+                <div className="flex flex-col items-center gap-2 px-4">
+                    <div className="flex justify-between w-full max-w-md items-center mb-2">
+                        <p className="font-bold text-lg">{exercise}</p>
+                        <Link to={buildLink(current, {exercise: ""})} className="text-xs text-neutral-400 underline">
+                            Back to all exercises
+                        </Link>
+                    </div>
+
+                    {!isStairMaster && (
+                        <div className="flex border border-neutral-500 rounded-md overflow-hidden mb-2 text-sm">
+                            <Link to={buildLink(current, {cardioMetric: "distance"})} className={`px-3 py-1 ${cardioMetric === "distance" ? "bg-neutral-500" : ""}`}>Distance</Link>
+                            <Link to={buildLink(current, {cardioMetric: "speed"})} className={`px-3 py-1 ${cardioMetric === "speed" ? "bg-neutral-500" : ""}`}>Speed</Link>
+                        </div>
+                    )}
+
+                    {leaderboard.length === 0 && <p>No logs for this exercise yet.</p>}
+                    {leaderboard.map((entry: any, index: number) => (
+                        <Link
+                            key={entry.userId}
+                            to={`/profile/${entry.userId}`}
+                            className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
+                        >
+                            <span>{rankLabel(index)} {entry.displayName}</span>
+                            <span>{entry.displayValue}</span>
+                        </Link>
+                    ))}
+                </div>
+            )}
 
             <NavBar />
         </div>

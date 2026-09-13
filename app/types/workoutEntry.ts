@@ -6,6 +6,7 @@ export type WorkoutEntry = {
     category: Category
     muscle?: Muscle
     createdAt: Date
+    steps?: number
 
     weight?: number
     reps?: number

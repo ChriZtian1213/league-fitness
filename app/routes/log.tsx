@@ -16,7 +16,6 @@ import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
 
-
 const HARDCODED_EXERCISES: Exercise[] = [
     {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest"},
     {id: "2", name: "Cable Triceps Pushdown", category: "upper", muscle: "triceps"},
@@ -27,6 +26,7 @@ const HARDCODED_EXERCISES: Exercise[] = [
     {id: "7", name: "Machine Leg Extension", category: "lower", muscle: "quads"},
     {id: "8", name: "Calve Raise", category: "lower", muscle: "calves"},
     {id: "9", name: "Run", category: "cardio"},
+    {id: "10", name: "Stair Master", category: "cardio"},
 ];
 
 function toDateStr(date: Date) {
@@ -126,10 +126,10 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 export default function Log(){
     const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr} = useLoaderData<typeof loader>();
     const clientToday = useLocalToday(todayDateStr);
-
     const navigate = useNavigate();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
+    const [showCalendar, setShowCalendar] = useState(date !== clientToday);
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
@@ -303,15 +303,26 @@ export default function Log(){
                     )}
                 </div>
 
-                <div className="py-4">
-                    <WorkoutCalendar
-                        year={year}
-                        month={month}
-                        loggedDates={loggedDates}
-                        selectedDate={date}
-                        today={clientToday}
-                    />
+                <div className="py-2 flex justify-center pt-8">
+                    <button
+                        onClick={() => setShowCalendar((v) => !v)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors"
+                    >
+                        📅 {showCalendar ? "Hide Calendar" : "View Calendar"}
+                    </button>
                 </div>
+
+                {showCalendar && (
+                    <div className="py-4">
+                        <WorkoutCalendar
+                            year={year}
+                            month={month}
+                            loggedDates={loggedDates}
+                            selectedDate={date}
+                            today={clientToday}
+                        />
+                    </div>
+                )}
 
                 <h2 className="font-bold mt-4 px-4">
                     {date === clientToday ? "Today's Logs" : `Logs for ${date}`}
