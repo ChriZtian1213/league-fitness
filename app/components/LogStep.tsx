@@ -11,7 +11,7 @@ type Props = {
 }
 
 function formatBest(best: WorkoutEntry): string {
-    if (best.weight !== undefined && best.reps !== undefined) {
+    if (best.weight != null && best.reps != null) {
         return `${best.weight} lbs × ${best.reps}`;
     }
     return `${best.distance} mi in ${best.time}`;

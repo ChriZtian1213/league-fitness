@@ -112,11 +112,11 @@ function pickBestForExercise(workouts: WorkoutEntry[], exerciseName: string): Wo
 
 function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
     return entries.reduce((best, curr) => {
-        if (best.weight !== undefined && curr.weight !== undefined) {
+        if (best.weight != null && curr.weight != null) {
             if (curr.weight !== best.weight) return curr.weight > best.weight ? curr : best;
             return (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best;
         }
-        if (best.distance !== undefined && curr.distance !== undefined) {
+        if (best.distance != null && curr.distance != null) {
             return curr.distance > best.distance ? curr : best;
         }
         return best;

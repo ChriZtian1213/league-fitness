@@ -1,5 +1,5 @@
 import type { Route } from "./+types/profile";
-import {Form, Link, useLoaderData} from "react-router";
+import {Form, Link, useLoaderData, useNavigate} from "react-router";
 import {useState} from "react";
 import {NavBar} from "~/components/NavBar";
 import {requireUserId} from "~/server/session.server";
@@ -117,6 +117,7 @@ export default function Profile() {
         user, posts, reposts, postCount, followerCount, followingCount,
         isOwnProfile, viewerIsFollowing,
     } = useLoaderData<typeof loader>();
+    const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts">("posts");
     const [isEditing, setIsEditing] = useState(false);
@@ -146,7 +147,9 @@ export default function Profile() {
                         ⛭
                     </button>
                 ) : (
-                    <div className="w-9" />
+                    <button onClick={() => navigate(-1)} className="text-2xl w-9 flex justify-start" aria-label="Go back">
+                        ←
+                    </button>
                 )}
 
                 <div className="flex-1 text-center font-bold text-4xl p-3">
@@ -164,13 +167,13 @@ export default function Profile() {
                 )}
             </div>
 
-            <div className="flex flex-row items-center gap-3 px-4">
+            <div className="justify-center flex flex-row items-center gap-3 px-4 pb-4">
                 <img
                     className="w-20 h-20 rounded-full m-2 border-2 border-black object-cover"
                     src={user?.profilePicture || "/favicon.ico"}
                     alt={`${user?.displayName ?? "User"}'s profile picture`}
                 />
-                <div className="flex flex-col p-2 min-w-0 flex-1">
+                <div className="flex flex-col p-2 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-2xl font-bold leading-tight">{user?.displayName}</p>
                         {!isOwnProfile && (
