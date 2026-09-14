@@ -137,8 +137,14 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId, onRep
                     {canEdit && !isEditing && (
                         <button onClick={() => setEditingCommentId(comment.id)}>Edit</button>
                     )}
-                    {canDelete && !isEditing && (
-                        <Form method="post">
+                    {canDelete && (
+                        <Form
+                            method="post"
+                            onSubmit={(e) => {
+                                const button = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                                if (button) button.disabled = true;
+                            }}
+                        >
                             <input type="hidden" name="intent" value="deleteComment" />
                             <input type="hidden" name="postId" value={postId} />
                             <input type="hidden" name="commentId" value={comment.id} />

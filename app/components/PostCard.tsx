@@ -70,7 +70,13 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                         <button onClick={() => setIsEditingCaption(true)} className="text-sm text-neutral-400">
                             Edit
                         </button>
-                        <Form method="post">
+                        <Form
+                            method="post"
+                            onSubmit={(e) => {
+                                const button = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                                if (button) button.disabled = true;
+                            }}
+                        >
                             <input type="hidden" name="intent" value="deletePost" />
                             <input type="hidden" name="postId" value={post.id} />
                             <button type="submit" className="text-red-400">
