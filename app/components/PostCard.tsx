@@ -13,6 +13,7 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
     const [wantsFocus, setWantsFocus] = useState(false);
     const [commentFlash, setCommentFlash] = useState(false);
     const [repostFlash, setRepostFlash] = useState(false);
+    const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
 
     function handleCommentClick() {
         setCommentFlash(true);
@@ -25,7 +26,7 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
         setTimeout(() => setRepostFlash(false), 300);
     }
 
-    const commentInputRef = useRef<HTMLInputElement>(null);
+    const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
     function focusCommentInput() {
         setActiveReplyId(null);
@@ -43,7 +44,7 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
 
     return (
         <div className="flex flex-col items-center gap-3 border-t-2 border-black p-4">
-            <div className="flex flex-row gap-2 items-center w-full max-w-md justify-center">
+            <div className="flex flex-row gap-4 items-center w-full max-w-md justify-center">
                 <Link to={`/profile/${post.userId}`}>
                     <img
                         src={post.profilePicture || "/favicon.ico"}
@@ -65,13 +66,18 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                     </Form>
                 )}
                 {post.isOwnPost && (
-                    <Form method="post">
-                        <input type="hidden" name="intent" value="deletePost" />
-                        <input type="hidden" name="postId" value={post.id} />
-                        <button type="submit" className="text-red-400">
-                            Delete
+                    <>
+                        <button onClick={() => setIsEditingCaption(true)} className="text-sm text-neutral-400">
+                            Edit
                         </button>
-                    </Form>
+                        <Form method="post">
+                            <input type="hidden" name="intent" value="deletePost" />
+                            <input type="hidden" name="postId" value={post.id} />
+                            <button type="submit" className="text-red-400">
+                                Delete
+                            </button>
+                        </Form>
+                    </>
                 )}
             </div>
 
@@ -128,32 +134,41 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
             {isEditingCaption ? (
                 <Form
                     method="post"
-                    className="flex gap-2 w-full max-w-md"
+                    className="flex flex-col gap-2 w-full max-w-md"
                     onSubmit={() => setIsEditingCaption(false)}
                 >
                     <input type="hidden" name="intent" value="editPost" />
                     <input type="hidden" name="postId" value={post.id} />
-                    <input
+                    <textarea
                         name="caption"
                         defaultValue={post.caption ?? ""}
-                        className="flex-1 border-b bg-transparent text-neutral-200"
+                        className="w-full border rounded-md px-3 py-2 bg-transparent text-neutral-200"
+                        rows={3}
                         autoFocus
+                        autoComplete="off"
                     />
-                    <button type="submit">Save</button>
-                    <button type="button" onClick={() => setIsEditingCaption(false)}>
-                        Cancel
-                    </button>
+                    <div className="flex gap-2">
+                        <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">Save</button>
+                        <button type="button" onClick={() => setIsEditingCaption(false)} className="border rounded-md px-4 py-2">
+                            Cancel
+                        </button>
+                    </div>
                 </Form>
             ) : (
                 (post.caption || post.isOwnPost) && (
-                    <div className="flex flex-row gap-2 w-full max-w-md items-center">
-                        <Link to={`/profile/${post.userId}`} className="font-bold hover:underline">
-                            {post.displayName}
-                        </Link>
-                        <p>{post.caption}</p>
-                        {post.isOwnPost && (
-                            <button onClick={() => setIsEditingCaption(true)} className="text-sm text-neutral-400">
-                                Edit
+                    <div className="w-full max-w-md">
+                        <p className={`leading-snug whitespace-pre-wrap ${!isCaptionExpanded ? "line-clamp-2" : ""}`}>
+                            <Link to={`/profile/${post.userId}`} className="font-bold hover:underline mr-1">
+                                {post.displayName}
+                            </Link>
+                            {post.caption}
+                        </p>
+                        {post.caption && post.caption.length > 80 && (
+                            <button
+                                onClick={() => setIsCaptionExpanded((v) => !v)}
+                                className="text-xs text-blue-400 mt-1 block"
+                            >
+                                {isCaptionExpanded ? "Show less" : "View all"}
                             </button>
                         )}
                     </div>
@@ -185,12 +200,19 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                 >
                     <input type="hidden" name="intent" value="comment" />
                     <input type="hidden" name="postId" value={post.id} />
-                    <input
+                    <textarea
                         ref={commentInputRef}
                         name="text"
                         placeholder="Add a comment..."
-                        className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
+                        rows={1}
+                        className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200 resize-none"
                         autoComplete="off"
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                e.currentTarget.form?.requestSubmit();
+                            }
+                        }}
                     />
                     <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">
                         Post

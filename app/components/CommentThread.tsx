@@ -30,6 +30,16 @@ type Props = {
 export function CommentThread({postId, comments, isOwnPost, currentUserId, onReplyingChange, activeReplyId, onEditingChange, activeEditId}: Props) {
     const [internalReplyingTo, setInternalReplyingTo] = useState<string | null>(null);
     const [internalEditingId, setInternalEditingId] = useState<string | null>(null);
+    const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+
+    function toggleCommentExpanded(commentId: string) {
+        setExpandedComments((prev) => {
+            const next = new Set(prev);
+            if (next.has(commentId)) next.delete(commentId);
+            else next.add(commentId);
+            return next;
+        });
+    }
 
     const isReplyControlled = activeReplyId !== undefined;
     const replyingTo = isReplyControlled ? activeReplyId : internalReplyingTo;
@@ -67,26 +77,45 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId, onRep
                         <input type="hidden" name="intent" value="editComment" />
                         <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="commentId" value={comment.id} />
-                        <input
+                        <textarea
                             name="text"
                             defaultValue={comment.text}
-                            className="flex-1 border-b bg-transparent text-neutral-200 text-sm"
+                            rows={1}
+                            className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200 text-sm resize-none"
                             autoFocus
                             autoComplete="off"
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    e.currentTarget.form?.requestSubmit();
+                                }
+                            }}
                         />
-                        <button type="submit">Save</button>
-                        <button type="button" onClick={() => setEditingCommentId(null)}>
+                        <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700 text-sm">Save</button>
+                        <button type="button" onClick={() => setEditingCommentId(null)} className="border rounded-md px-4 py-2 text-sm">
                             Cancel
                         </button>
                     </Form>
                 ) : (
-                    <div className="flex gap-2 items-center">
-                        <Link to={`/profile/${comment.userId}`} className="font-bold hover:underline">
-                            {comment.displayName}
-                        </Link>
-                        <p>{comment.text}</p>
-                        {comment.edited && (
-                            <span className="text-xs text-neutral-500">(edited)</span>
+                    <div>
+                        <p className={`leading-snug whitespace-pre-wrap break-words ${
+                            !expandedComments.has(comment.id) ? (isReply ? "line-clamp-2" : "line-clamp-3") : ""
+                        }`}>
+                            <Link to={`/profile/${comment.userId}`} className="font-bold hover:underline mr-1">
+                                {comment.displayName}
+                            </Link>
+                            {comment.text}
+                            {comment.edited && (
+                                <span className="text-xs text-neutral-500 ml-1">(edited)</span>
+                            )}
+                        </p>
+                        {(comment.text.length > 80 || comment.text.split("\n").length > (isReply ? 2 : 3)) && (
+                            <button
+                                onClick={() => toggleCommentExpanded(comment.id)}
+                                className="text-xs text-blue-400 mt-0.5"
+                            >
+                                {expandedComments.has(comment.id) ? "Show less" : "View all"}
+                            </button>
                         )}
                     </div>
                 )}
@@ -133,12 +162,19 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId, onRep
                         <input type="hidden" name="intent" value="comment" />
                         <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="parentCommentId" value={comment.id} />
-                        <input
+                        <textarea
                             name="text"
                             placeholder={`Reply to ${comment.displayName}...`}
-                            className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200 text-sm"
+                            rows={1}
+                            className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200 text-sm resize-none"
                             autoFocus
                             autoComplete="off"
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    e.currentTarget.form?.requestSubmit();
+                                }
+                            }}
                         />
                         <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700 text-sm">
                             Post
