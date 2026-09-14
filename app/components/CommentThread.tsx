@@ -121,12 +121,19 @@ export function CommentThread({postId, comments, isOwnPost, currentUserId, onRep
                 </div>
 
                 {replyingTo === comment.id && (
-                    <Form method="post" className="flex gap-2 mt-1 ml-6">
+                    <Form
+                        method="post"
+                        className="flex gap-2 mt-1 ml-6"
+                        key={`reply-input-${comment.id}-${repliesFor(comment.id).length}`}
+                        onSubmit={(e) => {
+                            const button = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                            if (button) button.disabled = true;
+                        }}
+                    >
                         <input type="hidden" name="intent" value="comment" />
                         <input type="hidden" name="postId" value={postId} />
                         <input type="hidden" name="parentCommentId" value={comment.id} />
                         <input
-                            key={`reply-input-${comment.id}-${repliesFor(comment.id).length}`}
                             name="text"
                             placeholder={`Reply to ${comment.displayName}...`}
                             className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200 text-sm"

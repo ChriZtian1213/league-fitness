@@ -174,12 +174,19 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
             )}
 
             {!activeReplyId && !activeEditId && (
-                <Form method="post" className="flex gap-2 w-full max-w-md">
+                <Form
+                    method="post"
+                    className="flex gap-2 w-full max-w-md"
+                    key={`comment-form-${post.id}-${post.comments.length}`}
+                    onSubmit={(e) => {
+                        const button = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                        if (button) button.disabled = true;
+                    }}
+                >
                     <input type="hidden" name="intent" value="comment" />
                     <input type="hidden" name="postId" value={post.id} />
                     <input
                         ref={commentInputRef}
-                        key={`comment-input-${post.id}-${post.comments.length}`}
                         name="text"
                         placeholder="Add a comment..."
                         className="flex-1 border rounded-md px-3 py-2 bg-transparent text-neutral-200"
