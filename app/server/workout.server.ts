@@ -239,6 +239,16 @@ export async function getLiftingExerciseOverview(
 
     const pipeline = [
         { $match: match },
+        { $sort: { weight: -1, reps: -1 } },
+        {
+            $group: {
+                _id: "$exercise",
+                value: { $first: "$weight" },
+                userId: { $first: "$userId" },
+                category: { $first: "$category" },
+                muscle: { $first: "$muscle" },
+            },
+        },
         {
             $lookup: {
                 from: "users",
@@ -249,17 +259,6 @@ export async function getLiftingExerciseOverview(
         },
         { $unwind: "$user" },
         { $match: { "user.emailVerified": true } },
-        { $sort: { weight: -1, reps: -1 } },
-        {
-            $group: {
-                _id: "$exercise",
-                value: { $first: "$weight" },
-                userId: { $first: "$userId" },
-                displayName: { $first: "$user.displayName" },
-                category: { $first: "$category" },
-                muscle: { $first: "$muscle" },
-            },
-        },
         { $sort: { value: -1 } },
         { $limit: 100 },
     ];
@@ -271,7 +270,7 @@ export async function getLiftingExerciseOverview(
         category: r.category ?? null,
         muscle: r.muscle ?? null,
         value: r.value,
-        displayName: r.displayName,
+        displayName: r.user.displayName,
         userId: r.userId.toString(),
     }));
 }
