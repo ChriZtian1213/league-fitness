@@ -144,7 +144,13 @@ export default function PostDetail() {
                     </Link>
                     <p>⚆ {timeAgo(post.createdAt)}</p>
                     {post.isOwnPost && (
-                        <Form method="post">
+                        <Form
+                            method="post"
+                            onSubmit={(e) => {
+                                const button = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                                if (button) button.disabled = true;
+                            }}
+                        >
                             <input type="hidden" name="intent" value="deletePost" />
                             <button type="submit" className="text-red-400">
                                 Delete

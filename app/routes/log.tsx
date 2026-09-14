@@ -190,7 +190,12 @@ export default function Log(){
         fetcher.submit(formData, {method: "post"});
     }
 
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
     function deleteWorkout(id: string){
+        if (deletingIds.has(id)) return; // already in progress, ignore extra clicks
+        setDeletingIds((prev) => new Set(prev).add(id));
+
         setWorkouts((prev) => prev.filter((w) => w.id !== id));
         const formData = new FormData();
         formData.set("intent", "delete");
