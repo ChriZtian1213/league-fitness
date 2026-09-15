@@ -387,6 +387,7 @@ export default function Profile() {
                         selectedDate={null}
                         today={todayDateStr}
                         clearTo="?"
+                        {...(isOwnProfile ? {dayLinkBase: "/log"} : {})}
                     />
                 </div>
             )}

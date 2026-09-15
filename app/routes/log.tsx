@@ -368,6 +368,7 @@ export default function Log(){
                             loggedDates={loggedDates}
                             selectedDate={date}
                             today={clientToday}
+                            dayLinkBase="?"
                         />
                     </div>
                 )}

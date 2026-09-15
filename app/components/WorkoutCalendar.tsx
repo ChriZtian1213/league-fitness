@@ -8,13 +8,14 @@ type Props = {
     selectedDate: string | null;
     today: string; // server's guess — used only until the client corrects it
     clearTo?: string;
+    dayLinkBase?: string;
 };
 
 function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
-export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, clearTo="/log"}: Props) {
+export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, clearTo="/log", dayLinkBase}: Props) {
     const clientToday = useLocalToday(today)
     const loggedSet = new Set(loggedDates);
 
@@ -32,6 +33,7 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, 
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
     const isDifferentMonth = todayYear !== year || todayMonth !== month;
+    const isClickable = dayLinkBase !== undefined
 
     const cells: (number | null)[] = [
         ...Array(startWeekday).fill(null),
@@ -71,15 +73,24 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, 
                     const isToday = isCurrentMonth && day === todayDay;
                     const isSelected = selectedDate === dateStr;
 
+                    const cellClassName = `aspect-square flex items-center justify-center rounded-md text-sm
+                        ${isLogged ? "bg-green-700 text-white font-bold" : "bg-neutral-700 text-neutral-300"}
+                        ${isToday ? "ring-2 ring-blue-400" : ""}
+                        ${isSelected ? "ring-2 ring-yellow-400" : ""}`;
+
+                    if (!isClickable) {
+                        return (
+                            <div key={i} className={cellClassName}>
+                                {day}
+                            </div>
+                        );
+                    }
+
                     return (
                         <Link
                             key={i}
-                            to={`?year=${year}&month=${month}&date=${dateStr}`}
-                            className={`aspect-square flex items-center justify-center rounded-md text-sm
-                                ${isLogged ? "bg-green-700 text-white font-bold" : "bg-neutral-700 text-neutral-300"}
-                                ${isToday ? "ring-2 ring-blue-400" : ""}
-                                ${isSelected ? "ring-2 ring-yellow-400" : ""}
-                            `}
+                            to={`${dayLinkBase}${dayLinkBase.includes("?") ? "&" : "?"}year=${year}&month=${month}&date=${dateStr}`}
+                            className={cellClassName}
                         >
                             {day}
                         </Link>
