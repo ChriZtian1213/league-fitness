@@ -15,16 +15,27 @@ import {getUnreadMessageCount} from "~/server/message.server";
 export type PostEntry = Awaited<ReturnType<typeof getFeed>>[number];
 
 export async function loader({request}: Route.LoaderArgs) {
+    const t0 = Date.now();
     const userId = await requireUserId(request);
+
+    const t1 = Date.now();
     const user = await getUserById(userId);
 
     const url = new URL(request.url);
     const requestedScope = url.searchParams.get("scope");
     const scope: FeedScope = requestedScope === "global" ? "global" : "following";
 
+    const t2 = Date.now();
     const posts = await getFeed(userId, scope);
+    console.log("getFeed:", Date.now() - t2, "ms");
+
+    const t3 = Date.now();
     const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
+
+    const t4 = Date.now();
     const unreadCount = await getUnreadNotificationCount(userId);
+
+    const t5 = Date.now();
     const unreadMessageCount = await getUnreadMessageCount(userId);
 
     return {user, posts, scope, cooldownSeconds, unreadCount, unreadMessageCount};

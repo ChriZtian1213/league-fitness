@@ -14,6 +14,7 @@ type Props = {
     imageSrc: string;
     shapeOptions: ShapeOption[];
     initialShapeKey?: string;
+    maxDimension?: number;
     onCancel: () => void;
     onCropDone: (croppedDataUrl: string, shapeKey: string) => void;
 };
@@ -27,11 +28,14 @@ function createImage(url: string): Promise<HTMLImageElement> {
     });
 }
 
-async function getCroppedImage(imageSrc: string, cropArea: Area): Promise<string> {
+async function getCroppedImage(imageSrc: string, cropArea: Area, maxDimension: number): Promise<string> {
     const image = await createImage(imageSrc);
     const canvas = document.createElement("canvas");
-    canvas.width = cropArea.width;
-    canvas.height = cropArea.height;
+
+    const scale = Math.min(1, maxDimension / Math.max(cropArea.width, cropArea.height));
+    canvas.width = cropArea.width * scale;
+    canvas.height = cropArea.height * scale;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not get canvas context.");
 
@@ -43,14 +47,14 @@ async function getCroppedImage(imageSrc: string, cropArea: Area): Promise<string
         cropArea.height,
         0,
         0,
-        cropArea.width,
-        cropArea.height
+        canvas.width,
+        canvas.height
     );
 
-    return canvas.toDataURL("image/jpeg", 0.9);
+    return canvas.toDataURL("image/jpeg", 0.75);
 }
 
-export function ImageCropModal({imageSrc, shapeOptions, initialShapeKey, onCancel, onCropDone}: Props) {
+export function ImageCropModal({imageSrc, shapeOptions, initialShapeKey, onCancel, onCropDone, maxDimension}: Props) {
     const [shapeKey, setShapeKey] = useState(initialShapeKey ?? shapeOptions[0].key);
     const [crop, setCrop] = useState({x: 0, y: 0});
     const [zoom, setZoom] = useState(1);
@@ -73,7 +77,7 @@ export function ImageCropModal({imageSrc, shapeOptions, initialShapeKey, onCance
         if (!croppedArea) return;
         setIsSaving(true);
         try {
-            const dataUrl = await getCroppedImage(imageSrc, croppedArea);
+            const dataUrl = await getCroppedImage(imageSrc, croppedArea, maxDimension ?? 800);
             onCropDone(dataUrl, shapeKey);
         } finally {
             setIsSaving(false);

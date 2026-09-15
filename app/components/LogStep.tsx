@@ -32,6 +32,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
     const [usePlateCalc, setUsePlateCalc] = useState(false);
     const [barWeight, setBarWeight] = useState("45");
     const [perSideWeight, setPerSideWeight] = useState("");
+    const isBodyweight = exercise.isBodyweight === true;
 
     const PLATE_SIZES = [45, 35, 25, 10, 5, 2.5];
 
@@ -139,22 +140,27 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         } else {
             const effectiveWeight = usePlateCalc
                 ? (Number(barWeight) || 0) + perSideFromPlates * 2
-                : Number(weight);
+                : (weight ? Number(weight) : 0);
 
-            const repsNumber = Number(reps);
-
-            if (usePlateCalc ? perSideFromPlates === 0 : !weight) {
+            if (!isBodyweight && (usePlateCalc ? perSideFromPlates === 0 : !weight)) {
                 alert("Please fill in all fields");
                 return false;
             }
+
+            const repsNumber = Number(reps);
 
             if (!reps) {
                 alert("Please fill in all fields");
                 return false;
             }
 
-            if (effectiveWeight <= 0 || repsNumber <= 0){
-                alert("Weight and reps must be greater than 0");
+            if (!isBodyweight && effectiveWeight <= 0) {
+                alert("Weight must be greater than 0");
+                return false;
+            }
+
+            if (repsNumber <= 0) {
+                alert("Reps must be greater than 0");
                 return false;
             }
 
@@ -165,6 +171,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 muscle: exercise.muscle,
                 weight: effectiveWeight,
                 reps: Number(reps),
+                isBodyweight,
                 createdAt: new Date()
             }
 
@@ -295,15 +302,17 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 </div>
             ) : (
                 <>
-                    <button
-                        type="button"
-                        onClick={() => setUsePlateCalc((v) => !v)}
-                        className="text-xs text-blue-400 underline"
-                    >
-                        {usePlateCalc ? "Enter total weight instead" : "Use plate calculator"}
-                    </button>
+                    {!isBodyweight && (
+                        <button
+                            type="button"
+                            onClick={() => setUsePlateCalc((v) => !v)}
+                            className="text-xs text-blue-400 underline"
+                        >
+                            {usePlateCalc ? "Enter total weight instead" : "Use plate calculator"}
+                        </button>
+                    )}
 
-                    {usePlateCalc ? (
+                    {usePlateCalc && !isBodyweight ? (
                         <div className="flex flex-col items-center gap-3">
                             <div className="flex flex-col sm:flex-row gap-2 items-center sm:items-end">
                                 <div className="flex flex-col items-center">
@@ -387,30 +396,38 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                             </button>
                         </div>
                     ) : (
-                        <div className="flex gap-2 items-center">
-                            <input
-                                ref={weightInputRef}
-                                type="number"
-                                inputMode="decimal"
-                                placeholder="Weight (lbs)"
-                                value={weight}
-                                onChange={(e) => setWeight(e.target.value)}
-                                onKeyDown={handleWeightKeyDown}
-                                className={inputClass}
-                            />
+                        <div className="flex gap-2 items-end">
+                            <div className="flex flex-col items-center">
+                                {isBodyweight && (
+                                    <label className="text-xs text-neutral-400 whitespace-nowrap">Add weight (optional)</label>
+                                )}
+                                <input
+                                    ref={weightInputRef}
+                                    type="number"
+                                    inputMode="decimal"
+                                    placeholder={isBodyweight ? "0" : "Weight (lbs)"}
+                                    value={weight}
+                                    onChange={(e) => setWeight(e.target.value)}
+                                    onKeyDown={handleWeightKeyDown}
+                                    className={inputClass}
+                                />
+                            </div>
 
-                            <p className="font-bold">x</p>
+                            <p className="font-bold pb-2">x</p>
 
-                            <input
-                                ref={repsInputRef}
-                                type="number"
-                                inputMode="numeric"
-                                placeholder="Reps"
-                                value={reps}
-                                onChange={(e) => setReps(e.target.value)}
-                                onKeyDown={handleRepsKeyDown}
-                                className={inputClass}
-                            />
+                            <div className="flex flex-col items-center">
+                                {isBodyweight && <label className="text-xs text-neutral-400">&nbsp;</label>}
+                                <input
+                                    ref={repsInputRef}
+                                    type="number"
+                                    inputMode="numeric"
+                                    placeholder="Reps"
+                                    value={reps}
+                                    onChange={(e) => setReps(e.target.value)}
+                                    onKeyDown={handleRepsKeyDown}
+                                    className={inputClass}
+                                />
+                            </div>
                         </div>
                     )}
                 </>

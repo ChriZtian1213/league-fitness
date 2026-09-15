@@ -5,6 +5,7 @@ export type WorkoutEntry = {
     exercise: string
     category: Category
     muscle?: Muscle
+    isBodyweight?: boolean
     createdAt: Date
     steps?: number
 

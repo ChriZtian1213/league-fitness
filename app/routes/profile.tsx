@@ -12,6 +12,7 @@ import {
     isFollowing,
     updateProfile,
     changePassword,
+    getUserProfilePicture
 } from "~/server/user.server";
 import {getPostsByUser, getPostCount, getRepostedPostsByUser} from "~/server/post.server";
 import {ImageCropModal, type ShapeOption} from "~/components/ImageCropModal";
@@ -39,25 +40,24 @@ export async function loader({request, params}: Route.LoaderArgs) {
         throw new Response("User not found", {status: 404});
     }
 
+    const profilePicture = await getUserProfilePicture(profileUserId);
+
     const url = new URL(request.url);
     const now = new Date();
     const todayDateStr = toDateStr(now);
     const year = Number(url.searchParams.get("year")) || now.getFullYear();
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
 
-    const [posts, reposts, postCount, followerCount, followingCount, viewerIsFollowing, loggedDates,] =
-        await Promise.all([
-            getPostsByUser(profileUserId),
-            getRepostedPostsByUser(profileUserId),
-            getPostCount(profileUserId),
-            getFollowerCount(profileUserId),
-            getFollowingCount(profileUserId),
-            isOwnProfile ? Promise.resolve(false) : isFollowing(viewerId, profileUserId),
-            getPublicWorkoutDates(viewerId, profileUserId),
-        ]);
+    const posts = await getPostsByUser(profileUserId);
+    const reposts = await getRepostedPostsByUser(profileUserId);
+    const postCount = await getPostCount(profileUserId);
+    const followerCount = await getFollowerCount(profileUserId);
+    const followingCount = await getFollowingCount(profileUserId);
+    const viewerIsFollowing = isOwnProfile ? false : await isFollowing(viewerId, profileUserId);
+    const loggedDates = await getPublicWorkoutDates(viewerId, profileUserId);
 
     return {
-        user, posts, reposts, postCount, followerCount, followingCount,
+        user: {...user, profilePicture}, posts, reposts, postCount, followerCount, followingCount,
         isOwnProfile, viewerIsFollowing, profileUserId,
         loggedDates, year, month, todayDateStr,
     };
@@ -396,6 +396,7 @@ export default function Profile() {
                 <ImageCropModal
                     imageSrc={rawImageSrc}
                     shapeOptions={PROFILE_SHAPE_OPTIONS}
+                    maxDimension={300}
                     onCancel={() => setRawImageSrc(null)}
                     onCropDone={(dataUrl) => {
                         setCroppedImage(dataUrl);

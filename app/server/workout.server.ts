@@ -10,6 +10,7 @@ export interface ExerciseOverviewEntry {
     value: number;
     displayName: string;
     userId: string;
+    isBodyweight?: boolean;
 }
 
 export interface WorkoutInput {
@@ -20,6 +21,8 @@ export interface WorkoutInput {
     reps?: number;
     distance?: number;
     time?: string;
+    steps?: number;
+    isBodyweight?: boolean;
 }
 
 export interface StoredWorkout extends WorkoutInput {
@@ -211,6 +214,8 @@ export async function getCardioLeaderboard(
 // One card per lifting exercise: whoever currently holds the heaviest
 // single lift for that exercise. Sorted heaviest-value-first so the
 // biggest numbers stand out at the top of the list.
+
+
 export async function getLiftingExerciseOverview(
     period: LeaderboardPeriod,
     scope: LeaderboardScope,
@@ -220,8 +225,7 @@ export async function getLiftingExerciseOverview(
 ): Promise<ExerciseOverviewEntry[]> {
     const db = await connectDB();
 
-    const match: Record<string, any> = {
-        weight: { $exists: true, $ne: null },
+    const baseMatch: Record<string, any> = {
         reps: { $exists: true, $ne: null },
     };
 
@@ -229,63 +233,36 @@ export async function getLiftingExerciseOverview(
         const since = new Date();
         if (period === "week") since.setDate(since.getDate() - 7);
         if (period === "month") since.setMonth(since.getMonth() - 1);
-        match.createdAt = { $gte: since };
+        baseMatch.createdAt = { $gte: since };
     }
     if (scope === "following") {
         const followedIds = await getFollowedObjectIds(userId);
-        match.userId = { $in: [...followedIds, new ObjectId(userId)] };
+        baseMatch.userId = { $in: [...followedIds, new ObjectId(userId)] };
     }
     if (scope === "mutual") {
         const mutualIds = await getMutualFollowObjectIds(userId);
-        match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
+        baseMatch.userId = { $in: [...mutualIds, new ObjectId(userId)] };
     }
-    if (category) match.category = category;
-    if (muscle) match.muscle = muscle;
+    if (category) baseMatch.category = category;
+    if (muscle) baseMatch.muscle = muscle;
 
-    const pipeline = [
-        { $match: match },
-        { $sort: { weight: -1, reps: -1 } },
-        {
-            $group: {
-                _id: "$exercise",
-                value: { $first: "$weight" },
-                userId: { $first: "$userId" },
-                category: { $first: "$category" },
-                muscle: { $first: "$muscle" },
+    async function runPipeline(sortField: "weight" | "reps", extraMatch: Record<string, any>) {
+        const match = { ...baseMatch, ...extraMatch };
+        const pipeline = [
+            { $match: match },
+            { $sort: { [sortField]: -1 } },
+            {
+                $group: {
+                    _id: "$exercise",
+                    value: { $first: `$${sortField}` },
+                    userId: { $first: "$userId" },
+                    category: { $first: "$category" },
+                    muscle: { $first: "$muscle" },
+                    isBodyweight: { $first: "$isBodyweight" },
+                },
             },
-        },
-        {
-            $lookup: {
-                from: "users",
-                localField: "userId",
-                foreignField: "_id",
-                as: "user",
-            },
-        },
-        { $unwind: "$user" },
-        { $match: { "user.emailVerified": true } },
-        { $sort: { value: -1 } },
-        { $limit: 100 },
-    ];
-
-    const results = await db.collection("workouts").aggregate(pipeline).toArray();
-
-    return (results as any[]).map((r) => ({
-        exercise: r._id,
-        category: r.category ?? null,
-        muscle: r.muscle ?? null,
-        value: r.value,
-        displayName: r.user.displayName,
-        userId: r.userId.toString(),
-    }));
-}
-
-export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
-    const db = await connectDB();
-
-    const results = await db
-        .collection("workouts")
-        .aggregate([
+            { $sort: { value: -1 } },
+            { $limit: 100 },
             {
                 $lookup: {
                     from: "users",
@@ -296,16 +273,60 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
             },
             { $unwind: "$user" },
             { $match: { "user.emailVerified": true } },
+        ];
+        return db.collection("workouts").aggregate(pipeline).toArray();
+    }
+
+    const [weighted, bodyweight] = await Promise.all([
+        runPipeline("weight", { isBodyweight: { $ne: true }, weight: { $exists: true, $ne: null } }),
+        runPipeline("reps", { isBodyweight: true }),
+    ]);
+
+    const combined = [...weighted, ...bodyweight] as any[];
+    combined.sort((a, b) => b.value - a.value);
+
+    return combined.slice(0, 100).map((r) => ({
+        exercise: r._id,
+        category: r.category ?? null,
+        muscle: r.muscle ?? null,
+        value: r.value,
+        displayName: r.user.displayName,
+        userId: r.userId.toString(),
+        isBodyweight: r.isBodyweight,
+    }));
+}
+
+export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
+    const db = await connectDB();
+
+    const results = await db
+        .collection("workouts")
+        .aggregate([
             {
                 $group: {
-                    _id: { category: "$category", muscle: "$muscle", exercise: "$exercise" },
+                    _id: { category: "$category", muscle: "$muscle", exercise: "$exercise", userId: "$userId" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_id.userId",
+                    foreignField: "_id",
+                    as: "user",
+                },
+            },
+            { $unwind: "$user" },
+            { $match: { "user.emailVerified": true } },
+            {
+                $group: {
+                    _id: { category: "$_id.category", muscle: "$_id.muscle", exercise: "$_id.exercise" },
                 },
             },
             { $sort: { "_id.exercise": 1 } },
         ])
         .toArray();
 
-    return results.map((doc: any)=> ({
+    return results.map((doc: any) => ({
         category: doc._id.category ?? null,
         muscle: doc._id.muscle ?? null,
         exercise: doc._id.exercise,
@@ -329,7 +350,9 @@ export async function createWorkoutEntry(
         reps: data.reps,
         distance: data.distance,
         time: data.time,
+        steps: data.steps,
         createdAt,
+        isBodyweight: data.isBodyweight,
     });
 
     return {
@@ -342,6 +365,8 @@ export async function createWorkoutEntry(
         distance: data.distance,
         time: data.time,
         createdAt,
+        steps: data.steps,
+        isBodyweight: data.isBodyweight,
     };
 }
 
@@ -400,6 +425,7 @@ export interface LeaderboardEntry {
     displayName: string;
     value: number; // total volume, or heaviest single weight lifted
     exercise?: string;
+    isBodyweight?: boolean;
 }
 
 // Ranks users either by total weight moved (weight x reps, summed) or by
@@ -417,7 +443,6 @@ export async function getLeaderboard(
     const db = await connectDB();
 
     const match: Record<string, any> = {
-        weight: { $exists: true, $ne: null },
         reps: { $exists: true, $ne: null },
     };
 
@@ -442,13 +467,24 @@ export async function getLeaderboard(
     if (muscle) match.muscle = muscle;
     if (exercise) match.exercise = exercise;
 
-    const pipeline: any[] = [
+    let isBodyweightExercise = false;
+    if (exercise) {
+        const sample = await db.collection("workouts").findOne({ exercise, isBodyweight: true });
+        isBodyweightExercise = !!sample;
+    }
+
+    const sortField = isBodyweightExercise ? "reps" : "weight";
+    if (!isBodyweightExercise) {
+        match.weight = { $exists: true, $ne: null };
+    }
+
+    const pipeline = [
         { $match: match },
-        { $sort: { weight: -1, reps: -1 } },
+        { $sort: { [sortField]: -1 } },
         {
             $group: {
                 _id: "$userId",
-                value: { $first: "$weight" },
+                value: { $first: `$${sortField}` },
                 exercise: { $first: "$exercise" },
             },
         },

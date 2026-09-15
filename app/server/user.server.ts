@@ -26,7 +26,10 @@ export interface UserSearchResult {
 
 export async function getUserById(userId: string): Promise<PublicUser | null> {
     const db = await connectDB();
-    const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+    const user = await db.collection("users").findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { displayName: 1, username: 1, email: 1, emailVerified: 1, bio: 1, calendarPublic: 1 } }
+    );
     if (!user) return null;
     return {
         id: user._id.toString(),
@@ -35,9 +38,18 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
         email: user.email,
         emailVerified: user.emailVerified ?? false,
         bio: user.bio,
-        profilePicture: user.profilePicture,
+        profilePicture: undefined,
         calendarPublic: user.calendarPublic ?? true,
     };
+}
+
+export async function getUserProfilePicture(userId: string): Promise<string | undefined> {
+    const db = await connectDB();
+    const user = await db.collection("users").findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { profilePicture: 1 } }
+    );
+    return user?.profilePicture;
 }
 
 export interface UpdateProfileInput {

@@ -17,29 +17,36 @@ declare global {
     var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-let clientPromise: Promise<MongoClient>;
+const CONNECT_TIMEOUT_MS = 10000;
 
-if (process.env.NODE_ENV === "development") {
-    // In dev, use a global variable so the value is preserved across
-    // module reloads caused by Vite's HMR, avoiding new connections
-    // on every file save.
+function connectWithTimeout(client: MongoClient, ms: number): Promise<MongoClient> {
+    return Promise.race([
+        client.connect(),
+        new Promise<MongoClient>((_, reject) =>
+            setTimeout(() => reject(new Error(`MongoDB connection timed out after ${ms}ms`)), ms)
+        ),
+    ]);
+}
+
+function createClientPromise(): Promise<MongoClient> {
+    const client = new MongoClient(uri, options);
+    return connectWithTimeout(client, CONNECT_TIMEOUT_MS).catch((err) => {
+        // If this attempt fails (including timing out), clear the cache so
+        // the next call gets a fresh attempt instead of reusing a broken
+        // or permanently-stuck promise.
+        global._mongoClientPromise = undefined;
+        throw err;
+    });
+}
+
+function getClientPromise(): Promise<MongoClient> {
     if (!global._mongoClientPromise) {
-        const client = new MongoClient(uri, options);
-        global._mongoClientPromise = client.connect();
+        global._mongoClientPromise = createClientPromise();
     }
-    clientPromise = global._mongoClientPromise;
-} else {
-    // In production (Vercel), attach to the global object too — this
-    // persists across warm serverless invocations of the same instance,
-    // which is what actually reduces redundant connections in practice.
-    if (!global._mongoClientPromise) {
-        const client = new MongoClient(uri, options);
-        global._mongoClientPromise = client.connect();
-    }
-    clientPromise = global._mongoClientPromise;
+    return global._mongoClientPromise;
 }
 
 export async function connectDB() {
-    const client = await clientPromise;
+    const client = await getClientPromise();
     return client.db("LeagueFitness");
 }

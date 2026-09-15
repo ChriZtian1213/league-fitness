@@ -27,6 +27,9 @@ const HARDCODED_EXERCISES: Exercise[] = [
     {id: "8", name: "Sitting Calve Raise", category: "lower", muscle: "calves"},
     {id: "9", name: "Run", category: "cardio"},
     {id: "10", name: "Stair Master", category: "cardio"},
+    {id: "11", name: "Push-up", category: "upper", muscle: "chest", isBodyweight: true},
+    {id: "12", name: "Pull-up", category: "upper", muscle: "back", isBodyweight: true},
+    {id: "13", name: "Dip", category: "upper", muscle: "triceps", isBodyweight: true},
 ];
 
 function toDateStr(date: Date) {
@@ -77,6 +80,8 @@ export async function action({request}: Route.ActionArgs){
     const reps = formData.get("reps");
     const distance = formData.get("distance");
     const time = formData.get("time");
+    const steps = formData.get("steps");
+    const isBodyweight = formData.get("isBodyweight");
 
     if (typeof exercise !== "string" || !exercise) {
         return {error: "Missing exercise name."}
@@ -93,12 +98,20 @@ export async function action({request}: Route.ActionArgs){
         reps: typeof reps === "string" && reps ? Number(reps) : undefined,
         distance: typeof distance === "string" && distance ? Number(distance) : undefined,
         time: typeof time === "string" && time ? time : undefined,
+        steps: typeof steps === "string" && steps ? Number(steps) : undefined,
+        isBodyweight: isBodyweight === "true",
     });
 
     return {ok: true, workout, tempId: typeof tempId === "string" ? tempId : undefined};
 }
 
 function formatLine(w: WorkoutEntry) {
+    if (w.isBodyweight) {
+        return w.weight ? `${w.weight} lbs × ${w.reps} reps` : `${w.reps} reps`;
+    }
+    if (w.steps != null) {
+        return `${w.steps} steps`;
+    }
     return w.weight && w.reps
         ? `${w.weight} lbs × ${w.reps}`
         : `${w.distance} mi in ${w.time}`;
@@ -112,9 +125,15 @@ function pickBestForExercise(workouts: WorkoutEntry[], exerciseName: string): Wo
 
 function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
     return entries.reduce((best, curr) => {
+        if (best.isBodyweight && curr.isBodyweight) {
+            return (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best;
+        }
         if (best.weight != null && curr.weight != null) {
             if (curr.weight !== best.weight) return curr.weight > best.weight ? curr : best;
             return (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best;
+        }
+        if (best.steps != null && curr.steps != null) {
+            return curr.steps > best.steps ? curr : best;
         }
         if (best.distance != null && curr.distance != null) {
             return curr.distance > best.distance ? curr : best;
@@ -187,6 +206,8 @@ export default function Log(){
         if (workout.reps !== undefined) formData.set("reps", String(workout.reps));
         if (workout.distance !== undefined) formData.set("distance", String(workout.distance));
         if (workout.time !== undefined) formData.set("time", workout.time);
+        if (workout.steps !== undefined) formData.set("steps", String(workout.steps));
+        if (workout.isBodyweight) formData.set("isBodyweight", "true");
         fetcher.submit(formData, {method: "post"});
     }
 

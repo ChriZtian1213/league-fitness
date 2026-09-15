@@ -32,7 +32,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     const user = await getUserById(userId);
     const url = new URL(request.url);
     const overviewSearch = url.searchParams.get("q") ?? "";
-
     const requestedPeriod = url.searchParams.get("period");
     const period: LeaderboardPeriod =
         requestedPeriod === "month" || requestedPeriod === "all"
@@ -116,7 +115,6 @@ export async function loader({ request }: Route.LoaderArgs) {
             }
         }
     }
-
     return {
         leaderboard, liftingOverview, cardioOverview, cardioMetric,
         period, scope, mode,
@@ -275,7 +273,7 @@ export default function Leaderboard() {
                             >
                                 <span className="font-bold">{entry.exercise}</span>
                                 <span className="flex items-center gap-1">
-                                    {entry.displayName} — {entry.value} lbs
+                                    {entry.displayName} — {entry.value} {entry.isBodyweight ? "reps" : "lbs"}
                                     <span className="text-neutral-500">›</span>
                                 </span>
                             </Link>
@@ -310,13 +308,9 @@ export default function Leaderboard() {
                 <>
                     <div className="flex justify-center px-4 mb-3">
                         <input
-                            defaultValue={overviewSearch}
-                            onChange={(e) => {
-                                const params = new URLSearchParams(searchParams);
-                                if (e.target.value) params.set("q", e.target.value);
-                                else params.delete("q");
-                                setSearchParams(params, {replace: true});
-                            }}
+                            ref={searchInputRef}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
                             placeholder="Search exercises..."
                             className="w-full max-w-md border rounded-md px-3 py-2 bg-transparent text-neutral-200"
                             autoComplete="off"
