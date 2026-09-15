@@ -90,14 +90,20 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, ex
             )}
 
             {noResults && (
-                <button
-                    className={"size-24 border"}
-                    onClick={() =>
-                        onCreateExercise(exactExistingMatch ?? query)
-                    }
-                >
-                    <p>➕</p>"{exactExistingMatch ?? query}"
-                </button>
+                <div className="flex flex-col items-center gap-1">
+                    <p className="text-xs text-neutral-500 text-center max-w-xs">
+                        Tip: name exercises "[Equipment] [Movement]" — e.g. "Dumbbell Incline Press."
+                        Use "Triceps" not "Tricep" for two-arm exercises — for single-arm work, say so (e.g. "Single-Arm Dumbbell Row").
+                    </p>
+                    <button
+                        className={"size-24 border"}
+                        onClick={() =>
+                            onCreateExercise(exactExistingMatch ?? query)
+                        }
+                    >
+                        <p>➕</p>"{exactExistingMatch ?? query}"
+                    </button>
+                </div>
             )}
 
             <div className="flex flex-row">

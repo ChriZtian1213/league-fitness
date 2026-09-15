@@ -34,6 +34,9 @@ export interface ExerciseCatalogEntry {
     category: Category;
     muscle: Muscle;
     exercise: string;
+    isBodyweight?: boolean;
+    isBarbell?: boolean;
+    isDumbbell?: boolean;
 }
 
 export interface CardioOverviewEntry {
@@ -316,6 +319,9 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
             {
                 $group: {
                     _id: { category: "$category", muscle: "$muscle", exercise: "$exercise", userId: "$userId" },
+                    isBodyweight: { $first: "$isBodyweight" },
+                    isBarbell: { $first: "$isBarbell" },
+                    isDumbbell: { $first: "$isDumbbell" },
                 },
             },
             {
@@ -331,6 +337,9 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
             {
                 $group: {
                     _id: { category: "$_id.category", muscle: "$_id.muscle", exercise: "$_id.exercise" },
+                    isBodyweight: { $first: "$isBodyweight" },
+                    isBarbell: { $first: "$isBarbell" },
+                    isDumbbell: { $first: "$isDumbbell" },
                 },
             },
             { $sort: { "_id.exercise": 1 } },
@@ -341,6 +350,9 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
         category: doc._id.category ?? null,
         muscle: doc._id.muscle ?? null,
         exercise: doc._id.exercise,
+        isBodyweight: doc.isBodyweight ?? undefined,
+        isBarbell: doc.isBarbell ?? undefined,
+        isDumbbell: doc.isDumbbell ?? undefined,
     }));
 
     catalogCache = { data, expiresAt: Date.now() + 60000 };

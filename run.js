@@ -4,12 +4,15 @@ const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
 const db = client.db("LeagueFitness");
 
-const sample = await db.collection("workouts").findOne({});
-console.log("Sample workout userId:", sample.userId, "| type:", typeof sample.userId, "| is ObjectId:", sample.userId?._bsontype === "ObjectId");
+const matching = await db.collection("workouts").distinct("exercise", {
+    exercise: { $regex: /dumbbell/i }
+});
+console.log("Exercise names matching 'dumbbell':", matching);
 
-const stringTypeCount = await db.collection("workouts").countDocuments({ userId: { $type: "string" } });
-const objectIdTypeCount = await db.collection("workouts").countDocuments({ userId: { $type: "objectId" } });
-console.log("userId stored as string:", stringTypeCount);
-console.log("userId stored as objectId:", objectIdTypeCount);
+const result = await db.collection("workouts").updateMany(
+    { exercise: { $regex: /dumbbell/i } },
+    { $set: { isDumbbell: true } }
+);
+console.log("Updated", result.modifiedCount, "workout document(s)");
 
 await client.close();

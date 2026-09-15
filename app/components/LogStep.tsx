@@ -22,17 +22,18 @@ function formatBest(best: WorkoutEntry): string {
 
 export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Props) {
     const isStairMaster = exercise.name === "Stair Master";
-
+    const isBodyweight = exercise.isBodyweight === true;
+    const isDumbbell = exercise.isDumbbell === true;
+    console.log("LogStep exercise:", exercise);
     const [weight, setWeight] = useState("");
     const [reps, setReps] = useState("");
-
     const [distance, setDistance] = useState("");
     const [time, setTime] = useState("");
     const [steps, setSteps] = useState("");
     const [usePlateCalc, setUsePlateCalc] = useState(false);
     const [barWeight, setBarWeight] = useState("45");
     const [perSideWeight, setPerSideWeight] = useState("");
-    const isBodyweight = exercise.isBodyweight === true;
+    const [perHandWeight, setPerHandWeight] = useState("");
 
     const PLATE_SIZES = [45, 35, 25, 10, 5, 2.5];
 
@@ -140,9 +141,15 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         } else {
             const effectiveWeight = usePlateCalc
                 ? (Number(barWeight) || 0) + perSideFromPlates * 2
-                : (weight ? Number(weight) : 0);
+                : isDumbbell
+                    ? (Number(perHandWeight) || 0) * 2
+                    : (weight ? Number(weight) : 0);
 
-            if (!isBodyweight && (usePlateCalc ? perSideFromPlates === 0 : !weight)) {
+            if (!isBodyweight && !isDumbbell && (usePlateCalc ? perSideFromPlates === 0 : !weight)) {
+                alert("Please fill in all fields");
+                return false;
+            }
+            if (isDumbbell && !perHandWeight) {
                 alert("Please fill in all fields");
                 return false;
             }
@@ -180,6 +187,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
             setWeight("")
             setReps("")
             setPerSideWeight("")
+            setPerHandWeight("")
             setPlateCounts({});
             return true;
         }
@@ -302,7 +310,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 </div>
             ) : (
                 <>
-                    {!isBodyweight && (
+                    {!isBodyweight && !isDumbbell && (
                         <button
                             type="button"
                             onClick={() => setUsePlateCalc((v) => !v)}
@@ -312,7 +320,38 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                         </button>
                     )}
 
-                    {usePlateCalc && !isBodyweight ? (
+                    {console.log("Rendering isDumbbell branch check, value is:", isDumbbell)}
+                    {isDumbbell ? (
+                        <div className="flex gap-2 items-start">
+                            <div className="flex flex-col items-center">
+                                <label className="text-xs text-neutral-400 whitespace-nowrap">Per hand</label>
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={perHandWeight}
+                                    onChange={(e) => setPerHandWeight(e.target.value)}
+                                    className={inputClass}
+                                />
+                                <p className="text-xs text-neutral-500 mt-1">
+                                    Total: {(Number(perHandWeight) || 0) * 2} lbs
+                                </p>
+                            </div>
+                            <p className="font-bold pt-6">x</p>
+                            <div className="flex flex-col items-center">
+                                <label className="text-xs text-neutral-400 invisible">Reps</label>
+                                <input
+                                    ref={repsInputRef}
+                                    type="number"
+                                    inputMode="numeric"
+                                    placeholder="Reps"
+                                    value={reps}
+                                    onChange={(e) => setReps(e.target.value)}
+                                    onKeyDown={handleRepsKeyDown}
+                                    className={inputClass}
+                                />
+                            </div>
+                        </div>
+                    ) : usePlateCalc && !isBodyweight ? (
                         <div className="flex flex-col items-center gap-3">
                             <div className="flex flex-col sm:flex-row gap-2 items-center sm:items-end">
                                 <div className="flex flex-col items-center">

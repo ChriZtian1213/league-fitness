@@ -65,50 +65,56 @@ export async function getFeed(viewerUserId: string, scope: FeedScope = "followin
 
     pipeline.push(
         { $sort: { createdAt: -1 } },
-        { $limit: 50 },
-        {
-            $lookup: {
-                from: "users",
-                localField: "userId",
-                foreignField: "_id",
-                as: "author",
-            },
-        },
-        { $unwind: "$author" }
+        { $limit: 50 }
     );
 
     const posts = await db.collection<PostDoc>("posts").aggregate(pipeline).toArray();
 
-    return posts.map((post: any) => ({
-        id: post._id.toString(),
-        userId: post.userId.toString(),
-        displayName: post.author.displayName,
-        profilePicture: post.author.profilePicture ?? null,
-        imageData: post.imageData,
-        caption: post.caption,
-        createdAt: post.createdAt,
-        likeCount: (post.likedBy ?? []).length,
-        likedByMe: (post.likedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
-        commentCount: (post.comments ?? []).length,
-        comments: (post.comments ?? []).map((c: any) => ({
-            id: c.id,
-            userId: c.userId.toString(),
-            displayName: c.displayName,
-            text: c.text,
-            createdAt: c.createdAt,
-            likeCount: (c.likedBy ?? []).length,
-            likedByMe: (c.likedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
-            parentCommentId: c.parentCommentId ?? null,
-            edited: c.edited ?? false,
-            editedAt: c.editedAt ?? null,
-        })),
-        repostCount: (post.repostedBy ?? []).length,
-        isFollowing: (post.author.followerIds ?? []).some((id: ObjectId) =>
-            id.equals(viewerObjectId)
-        ),
-        isOwnPost: post.userId.equals(viewerObjectId),
-        isRepostedByMe: (post.repostedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
-    }));
+    // Fetch the distinct authors separately instead of $lookup — avoids
+    // the confirmed join-performance issue.
+    const authorIds = [...new Set(posts.map((p: any) => p.userId.toString()))].map((id) => new ObjectId(id));
+    const rawAuthors = authorIds.length
+        ? await db.collection("users").find({ _id: { $in: authorIds } })
+            .project({ displayName: 1, profilePicture: 1, followerIds: 1 })
+            .toArray()
+        : [];
+    const authors = rawAuthors as { _id: ObjectId; displayName: string; profilePicture?: string; followerIds?: ObjectId[] }[];
+    const authorMap = new Map(authors.map((a) => [a._id.toString(), a]));
+
+    return posts.map((post: any) => {
+        const author = authorMap.get(post.userId.toString());
+
+        return {
+            id: post._id.toString(),
+            userId: post.userId.toString(),
+            displayName: author?.displayName ?? "Unknown",
+            profilePicture: author?.profilePicture ?? null,
+            imageData: post.imageData,
+            caption: post.caption,
+            createdAt: post.createdAt,
+            likeCount: (post.likedBy ?? []).length,
+            likedByMe: (post.likedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
+            commentCount: (post.comments ?? []).length,
+            comments: (post.comments ?? []).map((c: any) => ({
+                id: c.id,
+                userId: c.userId.toString(),
+                displayName: c.displayName,
+                text: c.text,
+                createdAt: c.createdAt,
+                likeCount: (c.likedBy ?? []).length,
+                likedByMe: (c.likedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
+                parentCommentId: c.parentCommentId ?? null,
+                edited: c.edited ?? false,
+                editedAt: c.editedAt ?? null,
+            })),
+            repostCount: (post.repostedBy ?? []).length,
+            isFollowing: (author?.followerIds ?? []).some((id: ObjectId) =>
+                id.equals(viewerObjectId)
+            ),
+            isOwnPost: post.userId.equals(viewerObjectId),
+            isRepostedByMe: (post.repostedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
+        };
+    });
 }
 
 export async function toggleLike(userId: string, postId: string) {

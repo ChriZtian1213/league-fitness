@@ -17,9 +17,9 @@ import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
 
 const HARDCODED_EXERCISES: Exercise[] = [
-    {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest"},
+    {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest", isBarbell: true},
     {id: "2", name: "Cable Triceps Pushdown", category: "upper", muscle: "triceps"},
-    {id: "3", name: "Dumbbell Shoulder Press", category: "upper", muscle: "shoulders"},
+    {id: "3", name: "Dumbbell Shoulder Press", category: "upper", muscle: "shoulders", isDumbbell: true},
     {id: "4", name: "Cable Curl", category: "upper", muscle: "biceps"},
     {id: "5", name: "Hip Thrust", category: "lower", muscle: "glutes"},
     {id: "6", name: "Machine Leg Curl", category: "lower", muscle: "hamstrings"},
@@ -160,6 +160,9 @@ export default function Log(){
                 name: c.exercise,
                 category: c.category as Exercise["category"],
                 muscle: c.muscle ?? undefined,
+                isBodyweight: c.isBodyweight,
+                isBarbell: c.isBarbell,
+                isDumbbell: c.isDumbbell,
             }));
 
         const merged = [...HARDCODED_EXERCISES];

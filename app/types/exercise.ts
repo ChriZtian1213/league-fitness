@@ -6,6 +6,8 @@ export type Exercise = {
     category: Category
     muscle?: Muscle
     isBodyweight?: boolean
+    isBarbell?: boolean
+    isDumbbell?: boolean
     createdBy?: string
     createdAt?: number
 }
