@@ -2,7 +2,7 @@ import type { Exercise } from "~/types/exercise";
 
 export const HARDCODED_EXERCISES: Exercise[] = [
     {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest", loggingType: "standard", allowedLoggingTypes: ["standard", "starting-weight"]},
-    {id: "2", name: "Cable Triceps Pushdown", category: "upper", muscle: "triceps", loggingType: "standard", allowedLoggingTypes: ["standard"]},
+    {id: "2", name: "Triceps Pushdown", category: "upper", muscle: "triceps", loggingType: "standard", allowedLoggingTypes: ["standard"]},
     {id: "3", name: "Dumbbell Shoulder Press", category: "upper", muscle: "shoulders", loggingType: "dumbbell", allowedLoggingTypes: ["dumbbell", "standard"]},
     {id: "4", name: "Cable Curl", category: "upper", muscle: "biceps", loggingType: "standard", allowedLoggingTypes: ["standard"]},
     {id: "5", name: "Barbell Hip Thrust", category: "lower", muscle: "glutes", loggingType: "standard", allowedLoggingTypes: ["standard", "starting-weight"] },

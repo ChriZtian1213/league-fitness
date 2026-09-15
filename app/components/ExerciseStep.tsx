@@ -10,9 +10,10 @@ type Props = {
     exercises: Exercise[]
     existingExerciseNames: string[]
     onSelectExercise: (exercise: Exercise) => void
-    onCreateExercise: (name: string) => void
+    onCreateExercise: (name: string, loggingTypes: LoggingType[]) => void
     onBack: () => void
     onHome?: ()=> void
+
 }
 
 const muscleLabels: Record<Muscle, string> = {
@@ -27,6 +28,18 @@ const categoryLabels: Record<Category, string> = {
 export function ExerciseStep({ category, muscle, exercises, onSelectExercise, existingExerciseNames, onCreateExercise, onBack, onHome}: Props) {
     const [query, setQuery] = useState("");
     const [loggingType, setLoggingType] = useState<LoggingType>("standard");
+    const [selectedLoggingTypes, setSelectedLoggingTypes] = useState<Set<LoggingType>>(new Set(["standard"]));
+    function toggleLoggingType(type: LoggingType) {
+        setSelectedLoggingTypes((prev) => {
+            const next = new Set(prev);
+            if (next.has(type)) {
+                if (next.size > 1) next.delete(type); // always keep at least one selected
+            } else {
+                next.add(type);
+            }
+            return next;
+        });
+    }
 
     const filteredExercises = exercises.filter((exercise) => {
         const matchesQuery = exercise.name
@@ -91,18 +104,47 @@ export function ExerciseStep({ category, muscle, exercises, onSelectExercise, ex
             )}
 
             {noResults && (
-                <div className="flex flex-col items-center gap-1">
-                    <p className="text-xs text-neutral-500 text-center max-w-xs">
+                <div className="flex flex-col items-center gap-2 px-4 w-full">
+                    <p className="text-xs text-neutral-500 text-center max-w-xs break-words">
                         Tip: name exercises "[Equipment] [Movement]" — e.g. "Dumbbell Incline Press."
                         Use "Triceps" not "Tricep" for two-arm exercises — for single-arm work, say so (e.g. "Single-Arm Dumbbell Row").
                     </p>
+
+                    {category !== "cardio" && (
+                        <div className="flex flex-col items-center gap-1">
+                            <p className="text-xs text-neutral-400">How is this logged? (tap to select, multiple allowed)</p>
+                            <div className="flex flex-wrap justify-center gap-1">
+                                {(["standard", "dumbbell", "bodyweight", "starting-weight"] as LoggingType[]).map((type) => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => toggleLoggingType(type)}
+                                        className={`px-3 py-1.5 border rounded-md text-xs ${
+                                            selectedLoggingTypes.has(type)
+                                                ? "bg-neutral-500 border-neutral-400"
+                                                : "border-neutral-600 text-neutral-400"
+                                        }`}
+                                    >
+                                        {type === "standard" && "Standard"}
+                                        {type === "dumbbell" && "Dumbbell"}
+                                        {type === "bodyweight" && "Bodyweight"}
+                                        {type === "starting-weight" && "Plate Calculator"}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <button
-                        className={"size-24 border"}
+                        className={"size-24 border flex flex-col items-center justify-center p-1"}
                         onClick={() =>
-                            onCreateExercise(exactExistingMatch ?? query)
+                            onCreateExercise(exactExistingMatch ?? query, [...selectedLoggingTypes])
                         }
                     >
-                        <p>➕</p>"{exactExistingMatch ?? query}"
+                        <p>➕</p>
+                        <p className="text-xs text-center break-words line-clamp-2">
+                            "{exactExistingMatch ?? query}"
+                        </p>
                     </button>
                 </div>
             )}

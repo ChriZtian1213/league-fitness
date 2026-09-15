@@ -307,14 +307,15 @@ export default function Log(){
                                 setSelectedExercise(exercise)
                                 flow.next()
                             }}
-                            onCreateExercise={(name) => {
+                            onCreateExercise={(name, loggingTypes) => {
                                 if (!flow.category) return
                                 const newExercise: Exercise = {
                                     id: crypto.randomUUID(),
                                     name,
                                     category: flow.category,
                                     muscle: flow.muscle ?? undefined,
-                                    loggingType: flow.category === "cardio" ? undefined : "standard"
+                                    loggingType: flow.category === "cardio" ? undefined : loggingTypes[0],
+                                    allowedLoggingTypes: flow.category === "cardio" ? undefined : loggingTypes,
                                 }
                                 setExercises((prev) => [...prev, newExercise])
                                 setSelectedExercise(newExercise)

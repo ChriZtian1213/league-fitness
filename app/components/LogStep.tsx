@@ -308,7 +308,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                         >
                             {type === "standard" && "Standard"}
                             {type === "dumbbell" && "Dumbbell"}
-                            {type === "starting-weight" && "Starting Weight + Plates"}
+                            {type === "starting-weight" && "Plate Calculator"}
                             {type === "bodyweight" && "Bodyweight"}
                         </button>
                     ))}
