@@ -26,15 +26,32 @@ export async function createNotification(
     if (toUserId === fromUserId) return; // don't notify yourself
 
     const db = await connectDB();
-    await db.collection("notifications").insertOne({
+
+    // De-dupe: the same person doing the same action on the same target
+    // (e.g. repeatedly unfollow/follow, or unlike/like the same post)
+    // just refreshes one notification instead of spamming new ones.
+    const dedupeFilter: Record<string, any> = {
         toUserId: new ObjectId(toUserId),
         fromUserId: new ObjectId(fromUserId),
-        fromDisplayName,
         type,
-        postId: postId ? new ObjectId(postId) : undefined,
-        read: false,
-        createdAt: new Date(),
-    });
+    };
+    if (postId) {
+        dedupeFilter.postId = new ObjectId(postId);
+    } else {
+        dedupeFilter.postId = { $exists: false };
+    }
+
+    await db.collection("notifications").updateOne(
+        dedupeFilter,
+        {
+            $set: {
+                fromDisplayName,
+                read: false,
+                createdAt: new Date(),
+            },
+        },
+        { upsert: true }
+    );
 }
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {

@@ -1,7 +1,8 @@
 import type {Route} from "./+types/notifications";
-import {Link, useLoaderData} from "react-router";
+import {Form, Link, useLoaderData} from "react-router";
 import {requireUserId} from "~/server/session.server";
 import {getNotificationsForUser, markAllNotificationsRead} from "~/server/notification.server";
+import {isFollowing} from "~/server/user.server";
 import {NavBar} from "~/components/NavBar";
 import {timeAgo} from "~/utils/timeAgo";
 
@@ -9,7 +10,30 @@ export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
     const notifications = await getNotificationsForUser(userId);
     await markAllNotificationsRead(userId);
-    return {notifications};
+
+    // For follow-type notifications, check whether you already follow them
+    // back, so the button can say "Follow Back" or nothing at all if you do.
+    const followBackStatus: Record<string, boolean> = {};
+    for (const n of notifications) {
+        if (n.type === "follow") {
+            followBackStatus[n.fromUserId] = await isFollowing(userId, n.fromUserId);
+        }
+    }
+
+    return {notifications, followBackStatus};
+}
+
+export async function action({request}: Route.ActionArgs) {
+    const userId = await requireUserId(request);
+    const formData = await request.formData();
+    const targetUserId = formData.get("targetUserId");
+
+    if (typeof targetUserId === "string") {
+        const {followUser} = await import("~/server/user.server");
+        await followUser(userId, targetUserId);
+    }
+
+    return {ok: true};
 }
 
 function describe(n: {type: string}) {
@@ -17,12 +41,13 @@ function describe(n: {type: string}) {
         case "like": return "liked your post";
         case "comment": return "commented on your post";
         case "follow": return "started following you";
+        case "repost": return "reposted your post";
         default: return "interacted with your content";
     }
 }
 
 export default function Notifications() {
-    const {notifications} = useLoaderData<typeof loader>();
+    const {notifications, followBackStatus} = useLoaderData<typeof loader>();
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -39,18 +64,22 @@ export default function Notifications() {
                     <p className="text-center py-8 text-neutral-400">No notifications yet.</p>
                 )}
                 {notifications.map((n) => (
-                    <Link
+                    <div
                         key={n.id}
-                        to={n.postId ? `/post/${n.postId}` : `/profile/${n.fromUserId}`}
                         className={`flex items-center gap-3 border-b border-neutral-700 py-3 ${!n.read ? "bg-neutral-700/40 rounded-md px-2" : ""}`}
                     >
-                        <img
-                            src={n.fromProfilePicture || "/favicon.ico"}
-                            alt={`${n.fromDisplayName}'s profile picture`}
-                            className="w-11 h-11 rounded-full object-cover border border-black flex-shrink-0"
-                        />
+                        <Link to={`/profile/${n.fromUserId}`} className="flex-shrink-0">
+                            <img
+                                src={n.fromProfilePicture || "/favicon.ico"}
+                                alt={`${n.fromDisplayName}'s profile picture`}
+                                className="w-11 h-11 rounded-full object-cover border border-black"
+                            />
+                        </Link>
 
-                        <div className="flex-1 min-w-0">
+                        <Link
+                            to={n.postId ? `/post/${n.postId}` : `/profile/${n.fromUserId}`}
+                            className="flex-1 min-w-0"
+                        >
                             <p className="text-sm">
                                 <span className="font-bold">{n.fromDisplayName}</span> {describe(n)}
                             </p>
@@ -58,16 +87,30 @@ export default function Notifications() {
                                 <p className="text-xs text-neutral-400 truncate">"{n.commentPreview}"</p>
                             )}
                             <p className="text-xs text-neutral-500">{timeAgo(n.createdAt)}</p>
-                        </div>
+                        </Link>
+
+                        {n.type === "follow" && !followBackStatus[n.fromUserId] && (
+                            <Form method="post" className="flex-shrink-0">
+                                <input type="hidden" name="targetUserId" value={n.fromUserId} />
+                                <button
+                                    type="submit"
+                                    className="px-3 py-1.5 rounded-full border border-blue-500 bg-blue-500/20 text-blue-400 text-xs font-bold"
+                                >
+                                    Follow Back
+                                </button>
+                            </Form>
+                        )}
 
                         {n.type !== "follow" && n.postImagePreview && (
-                            <img
-                                src={n.postImagePreview}
-                                alt="Post preview"
-                                className="w-11 h-11 object-cover border border-black rounded-md flex-shrink-0"
-                            />
+                            <Link to={n.postId ? `/post/${n.postId}` : "#"} className="flex-shrink-0">
+                                <img
+                                    src={n.postImagePreview}
+                                    alt="Post preview"
+                                    className="w-11 h-11 object-cover border border-black rounded-md"
+                                />
+                            </Link>
                         )}
-                    </Link>
+                    </div>
                 ))}
             </div>
 

@@ -226,8 +226,8 @@ export default function Profile() {
                     )}
                     <div className="flex flex-row gap-1.5 mt-1 text-sm">
                         <span>{postCount} <span className="text-neutral-400">posts</span></span>
-                        <span>{followerCount} <span className="text-neutral-400">followers</span></span>
-                        <span>{followingCount} <span className="text-neutral-400">following</span></span>
+                        <Link to="/connections?tab=followers">{followerCount} <span className="text-neutral-400">followers</span></Link>
+                        <Link to="/connections?tab=following">{followingCount} <span className="text-neutral-400">following</span></Link>
                     </div>
                 </div>
             </div>

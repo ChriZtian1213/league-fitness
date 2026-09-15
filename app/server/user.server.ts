@@ -337,3 +337,81 @@ export async function changePassword(
         { $set: { password: hashedPassword } }
     );
 }
+
+export interface FollowListEntry {
+    id: string;
+    displayName: string;
+    username: string;
+    profilePicture?: string;
+}
+
+export async function getFollowerList(userId: string): Promise<FollowListEntry[]> {
+    const db = await connectDB();
+    const userObjectId = new ObjectId(userId);
+
+    const me = await db
+        .collection("users")
+        .findOne({ _id: userObjectId }, { projection: { followerIds: 1 } });
+
+    const followerIds = (me?.followerIds ?? []) as ObjectId[];
+    if (followerIds.length === 0) return [];
+
+    const rawUsers = await db
+        .collection("users")
+        .find({ _id: { $in: followerIds } })
+        .project({ displayName: 1, username: 1, profilePicture: 1 })
+        .toArray();
+
+    const users = rawUsers as { _id: ObjectId; displayName: string; username: string; profilePicture?: string }[];
+
+    return users.map((u) => ({
+        id: u._id.toString(),
+        displayName: u.displayName,
+        username: u.username,
+        profilePicture: u.profilePicture,
+    }));
+}
+
+export async function getFollowingList(userId: string): Promise<FollowListEntry[]> {
+    const db = await connectDB();
+    const followedIds = await getFollowedObjectIds(userId);
+
+    if (followedIds.length === 0) return [];
+
+    const rawUsers = await db
+        .collection("users")
+        .find({ _id: { $in: followedIds } })
+        .project({ displayName: 1, username: 1, profilePicture: 1 })
+        .toArray();
+
+    const users = rawUsers as { _id: ObjectId; displayName: string; username: string; profilePicture?: string }[];
+
+    return users.map((u) => ({
+        id: u._id.toString(),
+        displayName: u.displayName,
+        username: u.username,
+        profilePicture: u.profilePicture,
+    }));
+}
+
+export async function getFriendsList(userId: string): Promise<FollowListEntry[]> {
+    const db = await connectDB();
+    const mutualIds = await getMutualFollowObjectIds(userId);
+
+    if (mutualIds.length === 0) return [];
+
+    const rawUsers = await db
+        .collection("users")
+        .find({ _id: { $in: mutualIds } })
+        .project({ displayName: 1, username: 1, profilePicture: 1 })
+        .toArray();
+
+    const users = rawUsers as { _id: ObjectId; displayName: string; username: string; profilePicture?: string }[];
+
+    return users.map((u) => ({
+        id: u._id.toString(),
+        displayName: u.displayName,
+        username: u.username,
+        profilePicture: u.profilePicture,
+    }));
+}

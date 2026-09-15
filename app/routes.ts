@@ -17,4 +17,5 @@ export default [
     route("messages", "routes/messages.tsx"),
     route("messages/:userId", "routes/message-thread.tsx"),
     route("reset-password", "routes/reset-password.tsx"),
+    route("connections", "routes/connections.tsx"),
 ] satisfies RouteConfig;
