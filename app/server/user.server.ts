@@ -81,7 +81,7 @@ export async function searchUsers(query: string, limit = 20): Promise<UserSearch
 
     const users = await db
         .collection("users")
-        .find({ displayName: { $regex: escaped, $options: "i" } })
+        .find({ displayName: { $regex: `^${escaped}`, $options: "i" } })
         .limit(limit)
         .project({ displayName: 1, username: 1, profilePicture: 1 })
         .toArray();
