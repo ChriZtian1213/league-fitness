@@ -246,9 +246,9 @@ export async function getLiftingExerciseOverview(
     if (category) baseMatch.category = category;
     if (muscle) baseMatch.muscle = muscle;
 
-    async function runPipeline(sortField: "weight" | "reps", extraMatch: Record<string, any>) {
+    async function runGrouping(sortField: "weight" | "reps", extraMatch: Record<string, any>) {
         const match = { ...baseMatch, ...extraMatch };
-        const pipeline = [
+        return db.collection("workouts").aggregate([
             { $match: match },
             { $sort: { [sortField]: -1 } },
             {
@@ -263,42 +263,53 @@ export async function getLiftingExerciseOverview(
             },
             { $sort: { value: -1 } },
             { $limit: 100 },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "userId",
-                    foreignField: "_id",
-                    as: "user",
-                },
-            },
-            { $unwind: "$user" },
-            { $match: { "user.emailVerified": true } },
-        ];
-        return db.collection("workouts").aggregate(pipeline).toArray();
+        ]).toArray();
     }
 
     const [weighted, bodyweight] = await Promise.all([
-        runPipeline("weight", { isBodyweight: { $ne: true }, weight: { $exists: true, $ne: null } }),
-        runPipeline("reps", { isBodyweight: true }),
+        runGrouping("weight", { isBodyweight: { $ne: true }, weight: { $exists: true, $ne: null } }),
+        runGrouping("reps", { isBodyweight: true }),
     ]);
 
     const combined = [...weighted, ...bodyweight] as any[];
-    combined.sort((a, b) => b.value - a.value);
 
-    return combined.slice(0, 100).map((r) => ({
-        exercise: r._id,
-        category: r.category ?? null,
-        muscle: r.muscle ?? null,
-        value: r.value,
-        displayName: r.user.displayName,
-        userId: r.userId.toString(),
-        isBodyweight: r.isBodyweight,
-    }));
+    // Fetch the (small number of) distinct users involved, separately —
+    // avoids the $lookup stage entirely, which was the confirmed bottleneck.
+    const userIds = [...new Set(combined.map((r) => r.userId.toString()))].map((id) => new ObjectId(id));
+    const rawUsers = userIds.length
+        ? await db.collection("users").find({ _id: { $in: userIds } }).project({ displayName: 1, emailVerified: 1 }).toArray()
+        : [];
+    const users = rawUsers as { _id: ObjectId; displayName: string; emailVerified?: boolean }[];
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+    return combined
+        .map((r) => {
+            const user = userMap.get(r.userId.toString());
+            return {
+                exercise: r._id,
+                category: r.category ?? null,
+                muscle: r.muscle ?? null,
+                value: r.value,
+                displayName: user?.displayName ?? "Unknown",
+                userId: r.userId.toString(),
+                isBodyweight: r.isBodyweight,
+                emailVerified: user?.emailVerified ?? false,
+            };
+        })
+        .filter((r) => r.emailVerified)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 100)
+        .map(({emailVerified, ...rest}) => rest);
 }
 
-export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
-    const db = await connectDB();
+let catalogCache: { data: ExerciseCatalogEntry[]; expiresAt: number } | null = null;
 
+export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
+    if (catalogCache && catalogCache.expiresAt > Date.now()) {
+        return catalogCache.data;
+    }
+
+    const db = await connectDB();
     const results = await db
         .collection("workouts")
         .aggregate([
@@ -326,11 +337,14 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
         ])
         .toArray();
 
-    return results.map((doc: any) => ({
+    const data = results.map((doc: any) => ({
         category: doc._id.category ?? null,
         muscle: doc._id.muscle ?? null,
         exercise: doc._id.exercise,
     }));
+
+    catalogCache = { data, expiresAt: Date.now() + 60000 };
+    return data;
 }
 
 // Saves one logged workout for a given user.
@@ -478,7 +492,7 @@ export async function getLeaderboard(
         match.weight = { $exists: true, $ne: null };
     }
 
-    const pipeline = [
+    const grouped = await db.collection("workouts").aggregate([
         { $match: match },
         { $sort: { [sortField]: -1 } },
         {
@@ -489,30 +503,33 @@ export async function getLeaderboard(
             },
         },
         { $sort: { value: -1 } },
-        {
-            $lookup: {
-                from: "users",
-                localField: "_id",
-                foreignField: "_id",
-                as: "user",
-            },
-        },
-        { $unwind: "$user" },
-        { $match: { "user.emailVerified": true } },
         { $limit: 50 },
-        {
-            $project: {
-                _id: 0,
-                userId: { $toString: "$_id" },
-                displayName: "$user.displayName",
-                value: 1,
-                exercise: 1,
-            },
-        },
-    ];
+    ]).toArray();
 
-    const results = await db.collection("workouts").aggregate(pipeline).toArray();
-    return results as LeaderboardEntry[];
+    // Fetch the small set of users involved separately, avoiding the
+    // $lookup stage entirely — confirmed to be the actual bottleneck.
+    const userIds = grouped.map((g: any) => g._id);
+    const rawUsers = userIds.length
+        ? await db.collection("users").find({ _id: { $in: userIds } }).project({ displayName: 1, emailVerified: 1 }).toArray()
+        : [];
+    const users = rawUsers as { _id: ObjectId; displayName: string; emailVerified?: boolean }[];
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+    return grouped
+        .map((g: any) => {
+            const user = userMap.get(g._id.toString());
+            return {
+                userId: g._id.toString(),
+                displayName: user?.displayName ?? "Unknown",
+                value: g.value,
+                exercise: g.exercise,
+                emailVerified: user?.emailVerified ?? false,
+            };
+        })
+        .filter((r) => r.emailVerified)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 50)
+        .map(({emailVerified, ...rest}) => rest) as LeaderboardEntry[];
 }
 
 // Returns the distinct list of strength-exercise names that have ever been

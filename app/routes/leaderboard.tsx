@@ -115,6 +115,7 @@ export async function loader({ request }: Route.LoaderArgs) {
             }
         }
     }
+
     return {
         leaderboard, liftingOverview, cardioOverview, cardioMetric,
         period, scope, mode,
