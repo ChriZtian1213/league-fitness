@@ -7,7 +7,7 @@ type Props = {
     loggedDates: string[];
     selectedDate: string | null;
     today: string; // server's guess — used only until the client corrects it
-    clearTo: string;
+    clearTo?: string;
 };
 
 function pad(n: number) {
