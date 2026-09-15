@@ -138,7 +138,7 @@ export default function Profile() {
     const actionData = useActionData<typeof action>();
     const navigate = useNavigate();
 
-    const [activeTab, setActiveTab] = useState<"posts" | "saved" | "reposts" | "calendar">("posts");
+    const [activeTab, setActiveTab] = useState<"posts" | "reposts" | "calendar">("posts");
     const [isEditing, setIsEditing] = useState(false);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
 
@@ -329,12 +329,6 @@ export default function Profile() {
                     Posts
                 </button>
                 <button
-                    onClick={() => setActiveTab("saved")}
-                    className={activeTab === "saved" ? "underline font-bold" : ""}
-                >
-                    Saved
-                </button>
-                <button
                     onClick={() => setActiveTab("reposts")}
                     className={activeTab === "reposts" ? "underline font-bold" : ""}
                 >
@@ -365,10 +359,6 @@ export default function Profile() {
                         </Link>
                     ))}
                 </div>
-            )}
-
-            {activeTab === "saved" && (
-                <p className="text-center py-8">Saved posts coming soon.</p>
             )}
 
             {activeTab === "reposts" && (
