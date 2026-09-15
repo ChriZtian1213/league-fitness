@@ -24,7 +24,6 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
     const isStairMaster = exercise.name === "Stair Master";
     const isBodyweight = exercise.isBodyweight === true;
     const isDumbbell = exercise.isDumbbell === true;
-    console.log("LogStep exercise:", exercise);
     const [weight, setWeight] = useState("");
     const [reps, setReps] = useState("");
     const [distance, setDistance] = useState("");
@@ -320,7 +319,6 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                         </button>
                     )}
 
-                    {console.log("Rendering isDumbbell branch check, value is:", isDumbbell)}
                     {isDumbbell ? (
                         <div className="flex gap-2 items-start">
                             <div className="flex flex-col items-center">
