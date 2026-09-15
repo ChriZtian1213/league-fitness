@@ -1,8 +1,9 @@
 import type {Route} from "./+types/connections";
-import {Link, useLoaderData} from "react-router";
+import {Form, Link, useLoaderData} from "react-router";
 import {requireUserId} from "~/server/session.server";
-import {getFollowerList, getFollowingList, getFriendsList} from "~/server/user.server";
+import {getFollowerList, getFollowingList, getFriendsList, followUser, unfollowUser} from "~/server/user.server";
 import {NavBar} from "~/components/NavBar";
+import {useState, useEffect} from "react";
 
 export async function loader({request}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -20,8 +21,33 @@ export async function loader({request}: Route.LoaderArgs) {
     return {users, tab};
 }
 
+export async function action({request}: Route.ActionArgs) {
+    const userId = await requireUserId(request);
+    const formData = await request.formData();
+    const targetUserId = formData.get("targetUserId");
+    const intent = formData.get("intent");
+
+    if (typeof targetUserId === "string") {
+        if (intent === "follow") await followUser(userId, targetUserId);
+        if (intent === "unfollow") await unfollowUser(userId, targetUserId);
+    }
+
+    return {ok: true};
+}
+
 export default function Connections() {
-    const {users, tab} = useLoaderData<typeof loader>();
+    const {users: serverUsers, tab} = useLoaderData<typeof loader>();
+    const [users, setUsers] = useState(serverUsers);
+
+    useEffect(() => {
+        setUsers(serverUsers);
+    }, [tab]);
+
+    function toggleFollowLocally(userId: string, nowFollowing: boolean) {
+        setUsers((prev) =>
+            prev.map((u) => (u.id === userId ? {...u, isFollowedByMe: nowFollowing} : u))
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -56,18 +82,35 @@ export default function Connections() {
                     </p>
                 )}
                 {users.map((u) => (
-                    <Link
-                        key={u.id}
-                        to={`/profile/${u.id}`}
-                        className="flex items-center gap-3 border-b border-neutral-700 py-2"
-                    >
-                        <img
-                            src={u.profilePicture || "/favicon.ico"}
-                            alt={`${u.displayName}'s profile picture`}
-                            className="w-10 h-10 rounded-full object-cover border border-black"
-                        />
-                        <p className="font-bold">{u.displayName}</p>
-                    </Link>
+                    <div key={u.id} className="flex items-center gap-3 border-b border-neutral-700 py-2">
+                        <Link to={`/profile/${u.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                            <img
+                                src={u.profilePicture || "/favicon.ico"}
+                                alt={`${u.displayName}'s profile picture`}
+                                className="w-10 h-10 rounded-full object-cover border border-black flex-shrink-0"
+                            />
+                            <p className="font-bold truncate">{u.displayName}</p>
+                        </Link>
+
+                        <Form
+                            method="post"
+                            className="flex-shrink-0"
+                            onSubmit={() => toggleFollowLocally(u.id, !u.isFollowedByMe)}
+                        >
+                            <input type="hidden" name="targetUserId" value={u.id} />
+                            <input type="hidden" name="intent" value={u.isFollowedByMe ? "unfollow" : "follow"} />
+                            <button
+                                type="submit"
+                                className={`px-3 py-1.5 rounded-full border text-xs font-bold transition-colors
+                                    ${u.isFollowedByMe
+                                    ? "border-neutral-500 text-neutral-400"
+                                    : "bg-blue-500/20 border-blue-500 text-blue-400"
+                                }`}
+                            >
+                                {u.isFollowedByMe ? "Following" : "Follow"}
+                            </button>
+                        </Form>
+                    </div>
                 ))}
             </div>
 
