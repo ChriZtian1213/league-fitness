@@ -15,29 +15,15 @@ import {getUnreadMessageCount} from "~/server/message.server";
 export type PostEntry = Awaited<ReturnType<typeof getFeed>>[number];
 
 export async function loader({request}: Route.LoaderArgs) {
-    const t0 = Date.now();
     const userId = await requireUserId(request);
-
-    const t1 = Date.now();
     const user = await getUserById(userId);
-
     const url = new URL(request.url);
     const requestedScope = url.searchParams.get("scope");
     const scope: FeedScope = requestedScope === "global" ? "global" : "following";
-
-    const t2 = Date.now();
     const posts = await getFeed(userId, scope);
-    console.log("getFeed:", Date.now() - t2, "ms");
-
-    const t3 = Date.now();
     const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
-
-    const t4 = Date.now();
     const unreadCount = await getUnreadNotificationCount(userId);
-
-    const t5 = Date.now();
     const unreadMessageCount = await getUnreadMessageCount(userId);
-
     return {user, posts, scope, cooldownSeconds, unreadCount, unreadMessageCount};
 }
 
@@ -188,13 +174,13 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4 px-4">
                 <Link
                     to="/notifications"
-                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors"
+                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-lg font-bold hover:border-neutral-400 transition-colors"
                 >
                     🔔
                     {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
-                {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
+            {unreadCount > 9 ? "9+" : unreadCount}
+        </span>
                     )}
                 </Link>
 
@@ -204,13 +190,13 @@ export default function Home() {
 
                 <Link
                     to="/messages"
-                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors"
+                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-lg font-bold hover:border-neutral-400 transition-colors"
                 >
                     ✉️
                     {unreadMessageCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
-                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
-            </span>
+            {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+        </span>
                     )}
                 </Link>
             </div>

@@ -15,6 +15,7 @@ export default [
     route("resend-verification", "routes/resend-verification.tsx"),
     route("notifications", "routes/notifications.tsx"),
     route("messages", "routes/messages.tsx"),
+    route("messages/new", "routes/new-message.tsx"),
     route("messages/:userId", "routes/message-thread.tsx"),
     route("reset-password", "routes/reset-password.tsx"),
     route("connections", "routes/connections.tsx"),

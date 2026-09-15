@@ -433,3 +433,32 @@ export async function getFriendsList(userId: string): Promise<FollowListEntry[]>
         isFollowedByMe: true,
     }));
 }
+
+export async function searchMutualsByName(userId: string, query: string): Promise<UserSearchResult[]> {
+    const db = await connectDB();
+    const mutualIds = await getMutualFollowObjectIds(userId);
+
+    if (mutualIds.length === 0) return [];
+
+    const trimmed = query.trim();
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const rawUsers = await db
+        .collection("users")
+        .find({
+            _id: { $in: mutualIds },
+            ...(trimmed ? { displayName: { $regex: escaped, $options: "i" } } : {}),
+        })
+        .limit(10)
+        .project({ displayName: 1, username: 1, profilePicture: 1 })
+        .toArray();
+
+    const users = rawUsers as { _id: ObjectId; displayName: string; username: string; profilePicture?: string }[];
+
+    return users.map((u) => ({
+        id: u._id.toString(),
+        displayName: u.displayName,
+        username: u.username,
+        profilePicture: u.profilePicture,
+    }));
+}

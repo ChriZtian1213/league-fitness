@@ -12,7 +12,7 @@ import {
     isFollowing,
     updateProfile,
     changePassword,
-    getUserProfilePicture
+    getUserProfilePicture, getMutualFollowObjectIds
 } from "~/server/user.server";
 import {getPostsByUser, getPostCount, getRepostedPostsByUser} from "~/server/post.server";
 import {ImageCropModal, type ShapeOption} from "~/components/ImageCropModal";
@@ -41,6 +41,9 @@ export async function loader({request, params}: Route.LoaderArgs) {
     }
 
     const profilePicture = await getUserProfilePicture(profileUserId);
+    const mutualIds = isOwnProfile ? [] : await getMutualFollowObjectIds(viewerId);
+    const isMutualFriend = mutualIds.some((id) => id.toString() === profileUserId);
+
 
     const url = new URL(request.url);
     const now = new Date();
@@ -59,7 +62,7 @@ export async function loader({request, params}: Route.LoaderArgs) {
     return {
         user: {...user, profilePicture}, posts, reposts, postCount, followerCount, followingCount,
         isOwnProfile, viewerIsFollowing, profileUserId,
-        loggedDates, year, month, todayDateStr,
+        loggedDates, year, month, todayDateStr, isMutualFriend
     };
 }
 
@@ -132,7 +135,7 @@ export async function action({request, params}: Route.ActionArgs) {
 export default function Profile() {
     const {
         user, posts, reposts, postCount, followerCount, followingCount,
-        isOwnProfile, viewerIsFollowing, loggedDates, year, month, todayDateStr,
+        isOwnProfile, viewerIsFollowing, loggedDates, year, month, todayDateStr, isMutualFriend, profileUserId
     } = useLoaderData<typeof loader>();
 
     const actionData = useActionData<typeof action>();
@@ -202,23 +205,34 @@ export default function Profile() {
                     <div className="flex flex-col gap-1">
                         <p className="text-2xl font-bold leading-tight">{user?.displayName}</p>
                         {!isOwnProfile && (
-                            <Form method="post">
-                                <input
-                                    type="hidden"
-                                    name="intent"
-                                    value={viewerIsFollowing ? "unfollow" : "follow"}
-                                />
-                                <button
-                                    type="submit"
-                                    className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-bold transition-colors w-fit
-            ${viewerIsFollowing
-                                        ? "border-neutral-500 text-neutral-400 hover:border-neutral-400"
-                                        : "bg-blue-500/20 border-blue-500 text-blue-400"
-                                    }`}
-                                >
-                                    {viewerIsFollowing ? "Following" : "Follow"}
-                                </button>
-                            </Form>
+                            <div className="flex gap-2">
+                                <Form method="post">
+                                    <input
+                                        type="hidden"
+                                        name="intent"
+                                        value={viewerIsFollowing ? "unfollow" : "follow"}
+                                    />
+                                    <button
+                                        type="submit"
+                                        className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-bold transition-colors
+                    ${viewerIsFollowing
+                                            ? "border-neutral-500 text-neutral-400 hover:border-neutral-400"
+                                            : "bg-blue-500/20 border-blue-500 text-blue-400"
+                                        }`}
+                                    >
+                                        {viewerIsFollowing ? "Following" : "Follow"}
+                                    </button>
+                                </Form>
+
+                                {isMutualFriend && (
+                                    <Link
+                                        to={`/messages/${profileUserId}`}
+                                        className="flex items-center gap-1 px-3 py-1 rounded-full border border-neutral-500 text-neutral-400 text-xs font-bold hover:border-neutral-400 transition-colors"
+                                    >
+                                        Message
+                                    </Link>
+                                )}
+                            </div>
                         )}
                     </div>
                     {user?.bio && !isEditing && (

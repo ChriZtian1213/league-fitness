@@ -26,6 +26,7 @@ export async function sendMessage(fromUserId: string, toUserId: string, text: st
         toUserId: new ObjectId(toUserId),
         text,
         read: false,
+        deletedFor: [] as ObjectId[],
         createdAt: new Date(),
     });
 }
@@ -35,6 +36,7 @@ export async function getUnreadMessageCount(userId: string): Promise<number> {
     return db.collection("messages").countDocuments({
         toUserId: new ObjectId(userId),
         read: false,
+        deletedFor: { $ne: new ObjectId(userId) },
     });
 }
 
@@ -46,7 +48,10 @@ export async function getConversations(userId: string): Promise<ConversationSumm
 
     const messages = await db
         .collection("messages")
-        .find({ $or: [{ fromUserId: userObjectId }, { toUserId: userObjectId }] })
+        .find({
+            $or: [{ fromUserId: userObjectId }, { toUserId: userObjectId }],
+            deletedFor: { $ne: userObjectId },
+        })
         .sort({ createdAt: -1 })
         .toArray();
 
@@ -104,6 +109,7 @@ export async function getConversationMessages(userId: string, otherUserId: strin
                 { fromUserId: userObjectId, toUserId: otherObjectId },
                 { fromUserId: otherObjectId, toUserId: userObjectId },
             ],
+            deletedFor: { $ne: userObjectId },
         })
         .sort({ createdAt: 1 })
         .toArray();
@@ -127,5 +133,37 @@ export async function markConversationRead(userId: string, otherUserId: string):
             read: false,
         },
         { $set: { read: true } }
+    );
+}
+
+export async function deleteMessage(userId: string, messageId: string): Promise<void> {
+    const db = await connectDB();
+
+    const result = await db.collection("messages").updateOne(
+        {
+            _id: new ObjectId(messageId),
+            fromUserId: new ObjectId(userId),
+        },
+        { $addToSet: { deletedFor: new ObjectId(userId) } }
+    );
+
+    if (result.matchedCount === 0) {
+        throw new Error("Message not found or not authorized");
+    }
+}
+
+export async function deleteConversation(userId: string, otherUserId: string): Promise<void> {
+    const db = await connectDB();
+    const userObjectId = new ObjectId(userId);
+    const otherObjectId = new ObjectId(otherUserId);
+
+    await db.collection("messages").updateMany(
+        {
+            $or: [
+                { fromUserId: userObjectId, toUserId: otherObjectId },
+                { fromUserId: otherObjectId, toUserId: userObjectId },
+            ],
+        },
+        { $addToSet: { deletedFor: userObjectId } }
     );
 }
