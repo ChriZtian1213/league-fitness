@@ -25,12 +25,12 @@ export default function Connections() {
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
-            <div className="flex items-center px-4 pt-4">
+            <div className="flex items-center mb-2 px-4">
                 <Link to="/profile" className="text-2xl">←</Link>
-            </div>
-
-            <div className="font-bold text-3xl flex justify-center items-center p-3">
-                Connections
+                <div className="flex-1 text-center font-bold text-3xl">
+                    Connections
+                </div>
+                <div className="w-6" />
             </div>
 
             <div className="flex justify-center mb-4 text-sm">

@@ -343,6 +343,7 @@ export interface FollowListEntry {
     displayName: string;
     username: string;
     profilePicture?: string;
+    isFollowedByMe: boolean;
 }
 
 export async function getFollowerList(userId: string): Promise<FollowListEntry[]> {
@@ -363,12 +364,15 @@ export async function getFollowerList(userId: string): Promise<FollowListEntry[]
         .toArray();
 
     const users = rawUsers as { _id: ObjectId; displayName: string; username: string; profilePicture?: string }[];
+    const myFollowedIds = await getFollowedObjectIds(userId);
+    const myFollowedSet = new Set(myFollowedIds.map((id) => id.toString()));
 
     return users.map((u) => ({
         id: u._id.toString(),
         displayName: u.displayName,
         username: u.username,
         profilePicture: u.profilePicture,
+        isFollowedByMe: myFollowedSet.has(u._id.toString()),
     }));
 }
 
@@ -391,6 +395,7 @@ export async function getFollowingList(userId: string): Promise<FollowListEntry[
         displayName: u.displayName,
         username: u.username,
         profilePicture: u.profilePicture,
+        isFollowedByMe: true,
     }));
 }
 
@@ -413,5 +418,6 @@ export async function getFriendsList(userId: string): Promise<FollowListEntry[]>
         displayName: u.displayName,
         username: u.username,
         profilePicture: u.profilePicture,
+        isFollowedByMe: true,
     }));
 }
