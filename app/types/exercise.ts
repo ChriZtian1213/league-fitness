@@ -5,9 +5,14 @@ export type Exercise = {
     name: string
     category: Category
     muscle?: Muscle
-    isBodyweight?: boolean
-    isBarbell?: boolean
-    isDumbbell?: boolean
+    loggingType?: LoggingType
+    allowedLoggingTypes?: LoggingType[]
     createdBy?: string
     createdAt?: number
 }
+
+export type LoggingType =
+    | "standard"
+    | "dumbbell"
+    | "starting-weight"
+    | "bodyweight"

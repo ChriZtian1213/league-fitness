@@ -1,5 +1,5 @@
 import { useState, useRef } from "react"
-import type { Exercise } from "../types/exercise.ts";
+import type {Exercise, LoggingType} from "../types/exercise.ts";
 import type {WorkoutEntry} from "../types/workoutEntry.ts";
 
 type Props = {
@@ -11,6 +11,9 @@ type Props = {
 }
 
 function formatBest(best: WorkoutEntry): string {
+    if (best.loggingType === "bodyweight") {
+        return best.weight ? `${best.weight} lbs × ${best.reps} reps` : `${best.reps} reps`;
+    }
     if (best.weight != null && best.reps != null) {
         return `${best.weight} lbs × ${best.reps}`;
     }
@@ -22,14 +25,19 @@ function formatBest(best: WorkoutEntry): string {
 
 export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Props) {
     const isStairMaster = exercise.name === "Stair Master";
-    const isBodyweight = exercise.isBodyweight === true;
-    const isDumbbell = exercise.isDumbbell === true;
+
+    const [selectedLoggingType, setSelectedLoggingType] =
+        useState<LoggingType>(exercise.loggingType ?? "standard");
+
+    const isBodyweight = selectedLoggingType === "bodyweight";
+    const isDumbbell = selectedLoggingType === "dumbbell";
+    const isStartingWeight = selectedLoggingType === "starting-weight";
     const [weight, setWeight] = useState("");
     const [reps, setReps] = useState("");
     const [distance, setDistance] = useState("");
     const [time, setTime] = useState("");
     const [steps, setSteps] = useState("");
-    const [usePlateCalc, setUsePlateCalc] = useState(false);
+    const [usePlateCalc, setUsePlateCalc] = useState(exercise.loggingType === "starting-weight");
     const [barWeight, setBarWeight] = useState("45");
     const [perSideWeight, setPerSideWeight] = useState("");
     const [perHandWeight, setPerHandWeight] = useState("");
@@ -138,16 +146,27 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
             return true;
 
         } else {
-            const effectiveWeight = usePlateCalc
+            const effectiveWeight = isStartingWeight && usePlateCalc
                 ? (Number(barWeight) || 0) + perSideFromPlates * 2
                 : isDumbbell
                     ? (Number(perHandWeight) || 0) * 2
                     : (weight ? Number(weight) : 0);
 
-            if (!isBodyweight && !isDumbbell && (usePlateCalc ? perSideFromPlates === 0 : !weight)) {
+            if (!isBodyweight && !isDumbbell && !isStartingWeight && !weight) {
                 alert("Please fill in all fields");
                 return false;
             }
+
+            if (isStartingWeight && !usePlateCalc && !weight) {
+                alert("Please fill in all fields");
+                return false;
+            }
+
+            if (isStartingWeight && usePlateCalc && !barWeight) {
+                alert("Please enter the starting weight");
+                return false;
+            }
+
             if (isDumbbell && !perHandWeight) {
                 alert("Please fill in all fields");
                 return false;
@@ -177,7 +196,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 muscle: exercise.muscle,
                 weight: effectiveWeight,
                 reps: Number(reps),
-                isBodyweight,
+                loggingType: selectedLoggingType,
                 createdAt: new Date()
             }
 
@@ -271,6 +290,31 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 </p>
             )}
 
+            {exercise.allowedLoggingTypes && exercise.allowedLoggingTypes.length > 1 && (
+                <div className="flex justify-center gap-2 mb-4">
+                    {exercise.allowedLoggingTypes.map((type) => (
+                        <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                                setSelectedLoggingType(type);
+                                setUsePlateCalc(type === "starting-weight");
+                            }}
+                            className={`border px-3 py-2 text-sm ${
+                                selectedLoggingType === type
+                                    ? "bg-neutral-900 font-bold"
+                                    : "hover:bg-neutral-600"
+                            }`}
+                        >
+                            {type === "standard" && "Standard"}
+                            {type === "dumbbell" && "Dumbbell"}
+                            {type === "starting-weight" && "Starting Weight + Plates"}
+                            {type === "bodyweight" && "Bodyweight"}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {isStairMaster ? (
                 <div className="flex gap-2">
                     <input
@@ -309,16 +353,6 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 </div>
             ) : (
                 <>
-                    {!isBodyweight && !isDumbbell && (
-                        <button
-                            type="button"
-                            onClick={() => setUsePlateCalc((v) => !v)}
-                            className="text-xs text-blue-400 underline"
-                        >
-                            {usePlateCalc ? "Enter total weight instead" : "Use plate calculator"}
-                        </button>
-                    )}
-
                     {isDumbbell ? (
                         <div className="flex gap-2 items-start">
                             <div className="flex flex-col items-center">
@@ -349,7 +383,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                                 />
                             </div>
                         </div>
-                    ) : usePlateCalc && !isBodyweight ? (
+                    ) : usePlateCalc && isStartingWeight ? (
                         <div className="flex flex-col items-center gap-3">
                             <div className="flex flex-col sm:flex-row gap-2 items-center sm:items-end">
                                 <div className="flex flex-col items-center">

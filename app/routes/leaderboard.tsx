@@ -274,8 +274,7 @@ export default function Leaderboard() {
                             >
                                 <span className="font-bold">{entry.exercise}</span>
                                 <span className="flex items-center gap-1">
-                                    {entry.displayName} — {entry.value} {entry.isBodyweight ? "reps" : "lbs"}
-                                    <span className="text-neutral-500">›</span>
+                                    {entry.displayName} — {entry.value} {entry.loggingType === "bodyweight" ? "reps" : "lbs"}                                    <span className="text-neutral-500">›</span>
                                 </span>
                             </Link>
                         ))}
@@ -299,7 +298,9 @@ export default function Leaderboard() {
                             className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
                         >
                             <span>{rankLabel(index)} {entry.displayName}</span>
-                            <span>{entry.value.toLocaleString()} lbs</span>
+                            <span>
+                                {entry.value.toLocaleString()} {entry.loggingType === "bodyweight" ? "reps" : "lbs"}
+                            </span>
                         </Link>
                     ))}
                 </div>

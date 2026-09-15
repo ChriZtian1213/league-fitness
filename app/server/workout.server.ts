@@ -2,6 +2,8 @@ import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
 import { getFollowedObjectIds, getMutualFollowObjectIds } from "./user.server";
 import type { Category, Muscle} from "~/types/workout";
+import type { LoggingType } from "~/types/exercise";
+import { HARDCODED_EXERCISES } from "~/data/exercises";
 
 export interface ExerciseOverviewEntry {
     exercise: string;
@@ -10,7 +12,7 @@ export interface ExerciseOverviewEntry {
     value: number;
     displayName: string;
     userId: string;
-    isBodyweight?: boolean;
+    loggingType?: LoggingType;
 }
 
 export interface WorkoutInput {
@@ -22,7 +24,7 @@ export interface WorkoutInput {
     distance?: number;
     time?: string;
     steps?: number;
-    isBodyweight?: boolean;
+    loggingType?: LoggingType;
 }
 
 export interface StoredWorkout extends WorkoutInput {
@@ -32,11 +34,10 @@ export interface StoredWorkout extends WorkoutInput {
 
 export interface ExerciseCatalogEntry {
     category: Category;
-    muscle: Muscle;
+    muscle?: Muscle;
     exercise: string;
-    isBodyweight?: boolean;
-    isBarbell?: boolean;
-    isDumbbell?: boolean;
+    loggingType?: LoggingType;
+    allowedLoggingTypes?: LoggingType[];
 }
 
 export interface CardioOverviewEntry {
@@ -261,7 +262,7 @@ export async function getLiftingExerciseOverview(
                     userId: { $first: "$userId" },
                     category: { $first: "$category" },
                     muscle: { $first: "$muscle" },
-                    isBodyweight: { $first: "$isBodyweight" },
+                    loggingType: { $first: "$loggingType" },
                 },
             },
             { $sort: { value: -1 } },
@@ -270,8 +271,13 @@ export async function getLiftingExerciseOverview(
     }
 
     const [weighted, bodyweight] = await Promise.all([
-        runGrouping("weight", { isBodyweight: { $ne: true }, weight: { $exists: true, $ne: null } }),
-        runGrouping("reps", { isBodyweight: true }),
+        runGrouping("weight", {
+            loggingType: { $ne: "bodyweight" },
+            weight: { $exists: true, $ne: null },
+        }),
+        runGrouping("reps", {
+            loggingType: "bodyweight",
+        }),
     ]);
 
     const combined = [...weighted, ...bodyweight] as any[];
@@ -295,7 +301,7 @@ export async function getLiftingExerciseOverview(
                 value: r.value,
                 displayName: user?.displayName ?? "Unknown",
                 userId: r.userId.toString(),
-                isBodyweight: r.isBodyweight,
+                loggingType: r.loggingType,
                 emailVerified: user?.emailVerified ?? false,
             };
         })
@@ -313,15 +319,19 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
     }
 
     const db = await connectDB();
+
     const results = await db
         .collection("workouts")
         .aggregate([
             {
                 $group: {
-                    _id: { category: "$category", muscle: "$muscle", exercise: "$exercise", userId: "$userId" },
-                    isBodyweight: { $first: "$isBodyweight" },
-                    isBarbell: { $first: "$isBarbell" },
-                    isDumbbell: { $first: "$isDumbbell" },
+                    _id: {
+                        category: "$category",
+                        muscle: "$muscle",
+                        exercise: "$exercise",
+                        userId: "$userId",
+                    },
+                    loggingType: { $first: "$loggingType" },
                 },
             },
             {
@@ -336,27 +346,80 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
             { $match: { "user.emailVerified": true } },
             {
                 $group: {
-                    _id: { category: "$_id.category", muscle: "$_id.muscle", exercise: "$_id.exercise" },
-                    isBodyweight: { $first: "$isBodyweight" },
-                    isBarbell: { $first: "$isBarbell" },
-                    isDumbbell: { $first: "$isDumbbell" },
+                    _id: {
+                        category: "$_id.category",
+                        muscle: "$_id.muscle",
+                        exercise: "$_id.exercise",
+                    },
+                    loggingType: { $first: "$loggingType" },
                 },
             },
-            { $sort: { "_id.exercise": 1 } },
+            {
+                $sort: {
+                    "_id.exercise": 1,
+                },
+            },
         ])
         .toArray();
 
-    const data = results.map((doc: any) => ({
-        category: doc._id.category ?? null,
-        muscle: doc._id.muscle ?? null,
-        exercise: doc._id.exercise,
-        isBodyweight: doc.isBodyweight ?? undefined,
-        isBarbell: doc.isBarbell ?? undefined,
-        isDumbbell: doc.isDumbbell ?? undefined,
+    const data = results.map((doc: any) => {
+        const hardcodedExercise = HARDCODED_EXERCISES.find(
+            (exercise) => exercise.name === doc._id.exercise
+        );
+
+        if (hardcodedExercise) {
+            return {
+                category: hardcodedExercise.category,
+                muscle: hardcodedExercise.muscle,
+                exercise: hardcodedExercise.name,
+                loggingType: hardcodedExercise.loggingType,
+                allowedLoggingTypes: hardcodedExercise.allowedLoggingTypes,
+            };
+        }
+
+        const loggingType = doc.loggingType as LoggingType | undefined;
+
+        return {
+            category: doc._id.category,
+            muscle: doc._id.muscle,
+            exercise: doc._id.exercise,
+            loggingType,
+            allowedLoggingTypes: loggingType === "bodyweight"
+                ? ["bodyweight"] as LoggingType[]
+                : loggingType === "dumbbell"
+                    ? ["dumbbell", "standard"] as LoggingType[]
+                    : loggingType === "starting-weight"
+                        ? ["standard", "starting-weight"] as LoggingType[]
+                        : ["standard"] as LoggingType[],
+        };
+    });
+
+    const customExercises = data.filter(
+        (dbExercise) =>
+            !HARDCODED_EXERCISES.some(
+                (hardcodedExercise) => hardcodedExercise.name === dbExercise.exercise
+            )
+    );
+
+    const hardcodedCatalog = HARDCODED_EXERCISES.map((exercise) => ({
+        category: exercise.category,
+        muscle: exercise.muscle,
+        exercise: exercise.name,
+        loggingType: exercise.loggingType,
+        allowedLoggingTypes: exercise.allowedLoggingTypes,
     }));
 
-    catalogCache = { data, expiresAt: Date.now() + 60000 };
-    return data;
+    const mergedCatalog = [
+        ...hardcodedCatalog,
+        ...customExercises,
+    ];
+
+    catalogCache = {
+        data: mergedCatalog,
+        expiresAt: Date.now() + 60000,
+    };
+
+    return mergedCatalog;
 }
 
 // Saves one logged workout for a given user.
@@ -378,7 +441,7 @@ export async function createWorkoutEntry(
         time: data.time,
         steps: data.steps,
         createdAt,
-        isBodyweight: data.isBodyweight,
+        loggingType: data.loggingType
     });
 
     return {
@@ -392,7 +455,7 @@ export async function createWorkoutEntry(
         time: data.time,
         createdAt,
         steps: data.steps,
-        isBodyweight: data.isBodyweight,
+        loggingType: data.loggingType,
     };
 }
 
@@ -419,6 +482,7 @@ export async function getWorkoutsForUser(
         distance: doc.distance,
         time: doc.time,
         createdAt: doc.createdAt,
+        loggingType: doc.loggingType,
     }));
 }
 
@@ -444,14 +508,13 @@ export async function deleteWorkoutEntry(
 
 export type LeaderboardPeriod = "week" | "month" | "year" | "all";
 export type LeaderboardScope = "global" | "following" | "mutual";
-export type LeaderboardMetric = "volume" | "heaviest";
 
 export interface LeaderboardEntry {
     userId: string;
     displayName: string;
     value: number; // total volume, or heaviest single weight lifted
     exercise?: string;
-    isBodyweight?: boolean;
+    loggingType?: LoggingType;
 }
 
 // Ranks users either by total weight moved (weight x reps, summed) or by
@@ -494,8 +557,12 @@ export async function getLeaderboard(
     if (exercise) match.exercise = exercise;
 
     let isBodyweightExercise = false;
+
     if (exercise) {
-        const sample = await db.collection("workouts").findOne({ exercise, isBodyweight: true });
+        const sample = await db
+            .collection("workouts")
+            .findOne({ exercise, loggingType: "bodyweight" });
+
         isBodyweightExercise = !!sample;
     }
 
@@ -512,7 +579,8 @@ export async function getLeaderboard(
                 _id: "$userId",
                 value: { $first: `$${sortField}` },
                 exercise: { $first: "$exercise" },
-            },
+                loggingType: { $first: "$loggingType" },
+            }
         },
         { $sort: { value: -1 } },
         { $limit: 50 },
@@ -536,6 +604,7 @@ export async function getLeaderboard(
                 value: g.value,
                 exercise: g.exercise,
                 emailVerified: user?.emailVerified ?? false,
+                loggingType: g.loggingType,
             };
         })
         .filter((r) => r.emailVerified)

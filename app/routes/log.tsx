@@ -3,34 +3,18 @@ import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
 import {useWorkoutFlow} from "~/features/workoutFlow/useWorkoutFlow";
 import type {WorkoutEntry} from "~/types/workoutEntry";
-import type {Exercise} from "~/types/exercise";
+import type {Exercise, LoggingType} from "~/types/exercise";
 import {CategoryStep} from "~/components/CategoryStep";
 import {MuscleStep} from "~/components/MuscleStep";
 import {ExerciseStep} from "~/components/ExerciseStep";
 import {LogStep} from "~/components/LogStep";
 import {NavBar} from "~/components/NavBar";
 import {WorkoutCalendar} from "~/components/WorkoutCalendar";
-import {Form, useFetcher, useLoaderData} from "react-router";
+import { useFetcher, useLoaderData} from "react-router";
 import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
 import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
-
-const HARDCODED_EXERCISES: Exercise[] = [
-    {id: "1", name: "Barbell Bench Press", category: "upper", muscle: "chest", isBarbell: true},
-    {id: "2", name: "Cable Triceps Pushdown", category: "upper", muscle: "triceps"},
-    {id: "3", name: "Dumbbell Shoulder Press", category: "upper", muscle: "shoulders", isDumbbell: true},
-    {id: "4", name: "Cable Curl", category: "upper", muscle: "biceps"},
-    {id: "5", name: "Hip Thrust", category: "lower", muscle: "glutes"},
-    {id: "6", name: "Machine Leg Curl", category: "lower", muscle: "hamstrings"},
-    {id: "7", name: "Machine Leg Extension", category: "lower", muscle: "quads"},
-    {id: "8", name: "Sitting Calve Raise", category: "lower", muscle: "calves"},
-    {id: "9", name: "Run", category: "cardio"},
-    {id: "10", name: "Stair Master", category: "cardio"},
-    {id: "11", name: "Push-up", category: "upper", muscle: "chest", isBodyweight: true},
-    {id: "12", name: "Pull-up", category: "upper", muscle: "back", isBodyweight: true},
-    {id: "13", name: "Dip", category: "upper", muscle: "triceps", isBodyweight: true},
-];
 
 function toDateStr(date: Date) {
     const d = new Date(date);
@@ -81,7 +65,7 @@ export async function action({request}: Route.ActionArgs){
     const distance = formData.get("distance");
     const time = formData.get("time");
     const steps = formData.get("steps");
-    const isBodyweight = formData.get("isBodyweight");
+    const loggingType = formData.get("loggingType");
 
     if (typeof exercise !== "string" || !exercise) {
         return {error: "Missing exercise name."}
@@ -99,14 +83,16 @@ export async function action({request}: Route.ActionArgs){
         distance: typeof distance === "string" && distance ? Number(distance) : undefined,
         time: typeof time === "string" && time ? time : undefined,
         steps: typeof steps === "string" && steps ? Number(steps) : undefined,
-        isBodyweight: isBodyweight === "true",
+        loggingType: typeof loggingType === "string"
+            ? (loggingType as LoggingType)
+            : undefined,
     });
 
     return {ok: true, workout, tempId: typeof tempId === "string" ? tempId : undefined};
 }
 
 function formatLine(w: WorkoutEntry) {
-    if (w.isBodyweight) {
+    if (w.loggingType === "bodyweight") {
         return w.weight ? `${w.weight} lbs × ${w.reps} reps` : `${w.reps} reps`;
     }
     if (w.steps != null) {
@@ -125,7 +111,7 @@ function pickBestForExercise(workouts: WorkoutEntry[], exerciseName: string): Wo
 
 function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
     return entries.reduce((best, curr) => {
-        if (best.isBodyweight && curr.isBodyweight) {
+        if (best.loggingType === "bodyweight" && curr.loggingType === "bodyweight") {
             return (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best;
         }
         if (best.weight != null && curr.weight != null) {
@@ -152,28 +138,18 @@ export default function Log(){
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
-    const [exercises, setExercises] = useState<Exercise[]>(() => {
-        const fromCatalog: Exercise[] = exerciseCatalog
+    const [exercises, setExercises] = useState<Exercise[]>(() =>
+        exerciseCatalog
             .filter((c) => c.category)
             .map((c) => ({
                 id: `catalog-${c.category}-${c.muscle ?? "none"}-${c.exercise}`,
                 name: c.exercise,
                 category: c.category as Exercise["category"],
                 muscle: c.muscle ?? undefined,
-                isBodyweight: c.isBodyweight,
-                isBarbell: c.isBarbell,
-                isDumbbell: c.isDumbbell,
-            }));
-
-        const merged = [...HARDCODED_EXERCISES];
-        for (const entry of fromCatalog) {
-            const alreadyExists = merged.some(
-                (e) => e.name.toLowerCase() === entry.name.toLowerCase() && e.category === entry.category
-            );
-            if (!alreadyExists) merged.push(entry);
-        }
-        return merged;
-    });
+                loggingType: c.loggingType,
+                allowedLoggingTypes: c.allowedLoggingTypes,
+            }))
+    );
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -210,7 +186,7 @@ export default function Log(){
         if (workout.distance !== undefined) formData.set("distance", String(workout.distance));
         if (workout.time !== undefined) formData.set("time", workout.time);
         if (workout.steps !== undefined) formData.set("steps", String(workout.steps));
-        if (workout.isBodyweight) formData.set("isBodyweight", "true");
+        if (workout.loggingType) formData.set("loggingType", workout.loggingType);
         fetcher.submit(formData, {method: "post"});
     }
 
@@ -337,7 +313,8 @@ export default function Log(){
                                     id: crypto.randomUUID(),
                                     name,
                                     category: flow.category,
-                                    muscle: flow.muscle ?? undefined
+                                    muscle: flow.muscle ?? undefined,
+                                    loggingType: flow.category === "cardio" ? undefined : "standard"
                                 }
                                 setExercises((prev) => [...prev, newExercise])
                                 setSelectedExercise(newExercise)

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Category, Muscle} from "../types/workout.ts";
-import type { Exercise } from "../types/exercise.ts";
+import type { Exercise, LoggingType } from "../types/exercise.ts";
 
 const MAX_VISIBLE_EXERCISES = 6;
 
@@ -26,6 +26,7 @@ const categoryLabels: Record<Category, string> = {
 
 export function ExerciseStep({ category, muscle, exercises, onSelectExercise, existingExerciseNames, onCreateExercise, onBack, onHome}: Props) {
     const [query, setQuery] = useState("");
+    const [loggingType, setLoggingType] = useState<LoggingType>("standard");
 
     const filteredExercises = exercises.filter((exercise) => {
         const matchesQuery = exercise.name

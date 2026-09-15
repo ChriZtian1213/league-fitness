@@ -1,11 +1,12 @@
-import type { Category, Muscle} from "./workout";
+import type { Category, Muscle } from "./workout";
+import type { LoggingType } from "./exercise";
 
 export type WorkoutEntry = {
     id: string
     exercise: string
     category: Category
     muscle?: Muscle
-    isBodyweight?: boolean
+    loggingType?: LoggingType
     createdAt: Date
     steps?: number
 
