@@ -204,9 +204,10 @@ export default function Leaderboard() {
                         </div>
 
                         <select
-                            className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1 disabled:opacity-0 disabled:pointer-events-none"
+                            className={`bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1 w-40 ${
+                                !category || musclesForCategory.length === 0 ? "invisible pointer-events-none" : ""
+                            }`}
                             value={muscle ?? ""}
-                            disabled={!category || musclesForCategory.length === 0}
                             onChange={(e) => {
                                 window.location.href = buildLink(current, {muscle: e.target.value});
                             }}
@@ -215,15 +216,14 @@ export default function Leaderboard() {
                             {musclesForCategory.map((m) => <option key={m} value={m}>{capitalize(m)}</option>)}
                         </select>
 
-                        {(category || muscle || overviewSearch) && (
-                            <Link
-                                to={buildLink(current, {category: "", muscle: "", q: ""})}
-                                className="text-xs text-neutral-400 underline"
-                            >
-                                Clear
-                            </Link>
-                        )}
-
+                        <Link
+                            to={buildLink(current, {category: "", muscle: "", q: ""})}
+                            className={`text-xs text-neutral-400 underline ${
+                                !(category || muscle || overviewSearch) ? "invisible pointer-events-none" : ""
+                            }`}
+                        >
+                            Clear
+                        </Link>
                     </div>
                     <div className="flex justify-center px-4 mb-3">
                         <input
