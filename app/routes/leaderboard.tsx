@@ -182,29 +182,38 @@ export default function Leaderboard() {
             {mode === "lifting" && !exercise && (
                 <>
                     <div className="flex justify-center gap-2 mb-2 text-sm flex-wrap px-4 items-center">
+                        <div className="flex border border-neutral-500 rounded-md overflow-hidden text-sm">
+                            <Link
+                                to={buildLink(current, {category: "", muscle: ""})}
+                                className={`px-3 py-1.5 ${!category ? "bg-neutral-500" : ""}`}
+                            >
+                                All
+                            </Link>
+                            <Link
+                                to={buildLink(current, {category: "upper", muscle: ""})}
+                                className={`px-3 py-1.5 ${category === "upper" ? "bg-neutral-500" : ""}`}
+                            >
+                                Upper
+                            </Link>
+                            <Link
+                                to={buildLink(current, {category: "lower", muscle: ""})}
+                                className={`px-3 py-1.5 ${category === "lower" ? "bg-neutral-500" : ""}`}
+                            >
+                                Lower
+                            </Link>
+                        </div>
+
                         <select
-                            className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
-                            value={category ?? ""}
+                            className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1 disabled:opacity-0 disabled:pointer-events-none"
+                            value={muscle ?? ""}
+                            disabled={!category || musclesForCategory.length === 0}
                             onChange={(e) => {
-                                window.location.href = buildLink(current, {category: e.target.value, muscle: ""});
+                                window.location.href = buildLink(current, {muscle: e.target.value});
                             }}
                         >
-                            <option value="">All Categories</option>
-                            {categories.map((c) => <option key={c} value={c}>{capitalize(c)}</option>)}
+                            <option value="">All Muscles</option>
+                            {musclesForCategory.map((m) => <option key={m} value={m}>{capitalize(m)}</option>)}
                         </select>
-
-                        {category && musclesForCategory.length > 0 && (
-                            <select
-                                className="bg-neutral-700 border border-neutral-500 rounded-md px-2 py-1"
-                                value={muscle ?? ""}
-                                onChange={(e) => {
-                                    window.location.href = buildLink(current, {muscle: e.target.value});
-                                }}
-                            >
-                                <option value="">All Muscles</option>
-                                {musclesForCategory.map((m) => <option key={m} value={m}>{capitalize(m)}</option>)}
-                            </select>
-                        )}
 
                         {(category || muscle || overviewSearch) && (
                             <Link
