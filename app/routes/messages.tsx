@@ -54,41 +54,48 @@ export default function Messages() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
-            <div className="flex items-center mb-2 px-4">
+        <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24 pt-4">
+            <div className="flex items-center mb-2 px-4 gap-2">
                 <button
                     onClick={() => (isSelecting ? cancelSelecting() : setIsSelecting(true))}
-                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-sm font-bold hover:border-neutral-400 transition-colors"
+                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-lg font-bold hover:border-neutral-400 transition-colors mr-2"
                 >
                     {isSelecting ? "✕" : "🗑️"}
                 </button>
+
+                {isSelecting && (
+                    <Form method="post">
+                        {[...selectedIds].map((id) => (
+                            <input key={id} type="hidden" name="otherUserId" value={id} />
+                        ))}
+                        <button
+                            type="submit"
+                            disabled={selectedIds.size === 0}
+                            onClick={(e) => {
+                                if (!window.confirm(`Delete ${selectedIds.size} conversation(s)? This cannot be undone.`)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            className="border rounded-md px-3 py-1.5 text-sm font-bold bg-red-700 disabled:opacity-40"
+                        >
+                            Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                        </button>
+                    </Form>
+                )}
+
                 <div className="flex-1 text-center font-bold text-3xl">
                     Messages
                 </div>
-                <Link to="/messages/new" className="text-2xl w-16 text-right">
-                    +
+
+                <Link
+                    to="/messages/new"
+                    className="relative flex items-center gap-1 px-3 py-1.5 rounded-full border border-neutral-500 text-neutral-300 text-lg font-bold hover:border-neutral-400 transition-colors"
+                >
+                    + New
                 </Link>
             </div>
 
-            {isSelecting && (
-                <Form method="post" className="flex justify-center mb-3">
-                    {[...selectedIds].map((id) => (
-                        <input key={id} type="hidden" name="otherUserId" value={id} />
-                    ))}
-                    <button
-                        type="submit"
-                        disabled={selectedIds.size === 0}
-                        onClick={(e) => {
-                            if (!window.confirm(`Delete ${selectedIds.size} conversation(s)? This cannot be undone.`)) {
-                                e.preventDefault();
-                            }
-                        }}
-                        className="border rounded-md px-4 py-1.5 text-sm font-bold bg-red-700 disabled:opacity-40"
-                    >
-                        Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
-                    </button>
-                </Form>
-            )}
+
 
             <div className="flex flex-col px-4 gap-2">
                 {conversations.length === 0 && (
