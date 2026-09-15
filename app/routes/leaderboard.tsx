@@ -240,10 +240,10 @@ export default function Leaderboard() {
                             autoComplete="off"
                         />
                     </div>
-
+                    <p className="text-xs text-neutral-500 text-center mb-2">Tap an exercise to see full rankings</p>
                     <div className="flex justify-between w-full max-w-md mx-auto text-xs text-neutral-400 mb-1">
                         <span>Exercise</span>
-                        <span>User — Weight lifted</span>
+                        <span>Best User — Weight</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-2 px-4">
@@ -252,10 +252,13 @@ export default function Leaderboard() {
                             <Link
                                 key={entry.exercise}
                                 to={buildLink(current, {exercise: entry.exercise})}
-                                className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
+                                className="flex justify-between items-center w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
                             >
                                 <span className="font-bold">{entry.exercise}</span>
-                                <span>{entry.displayName} — {entry.value} lbs</span>
+                                <span className="flex items-center gap-1">
+                                    {entry.displayName} — {entry.value} lbs
+                                    <span className="text-neutral-500">›</span>
+                                </span>
                             </Link>
                         ))}
                     </div>

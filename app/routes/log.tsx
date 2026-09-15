@@ -190,6 +190,44 @@ export default function Log(){
         fetcher.submit(formData, {method: "post"});
     }
 
+    function Breadcrumb({flow}: {flow: ReturnType<typeof useWorkoutFlow>}) {
+        if (flow.step === "category") return null;
+
+        const parts: {label: string; onClick: () => void}[] = [];
+
+        if (flow.category) {
+            parts.push({
+                label: flow.category === "upper" ? "Upper" : flow.category === "lower" ? "Lower" : "Cardio",
+                onClick: () => flow.setStep("category"),
+            });
+        }
+
+        if (flow.muscle && flow.step !== "muscle") {
+            parts.push({
+                label: flow.muscle.charAt(0).toUpperCase() + flow.muscle.slice(1),
+                onClick: () => flow.setStep("muscle"),
+            });
+        }
+
+        if (flow.step === "log" || flow.step === "exercise") {
+            // current step, not clickable
+        }
+
+        return (
+            <div className="flex justify-center items-center gap-1 text-xs text-neutral-400 mb-2">
+                {parts.map((p, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                    <button onClick={p.onClick} className="underline hover:text-neutral-200">
+                        {p.label}
+                    </button>
+                    <span>›</span>
+                </span>
+                ))}
+                <span className="text-neutral-200 font-bold capitalize">{flow.step}</span>
+            </div>
+        );
+    }
+
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
     function deleteWorkout(id: string){
@@ -228,6 +266,7 @@ export default function Log(){
         })
         .map((c) => c.exercise);
 
+
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
             <div className="font-bold text-4xl flex justify-center items-center p-3">
@@ -238,6 +277,7 @@ export default function Log(){
             )}
             <div>
                 <div className="flex flex-col items-center">
+                    <Breadcrumb flow={flow} />
                     {flow.step === "category" && (
                         <CategoryStep
                             onSelect={(c) => {
@@ -319,6 +359,9 @@ export default function Log(){
 
                 {showCalendar && (
                     <div className="py-4">
+                        <p className="text-xs text-neutral-500 text-center mb-2">
+                            🟢 = logged workout — tap any day to view it
+                        </p>
                         <WorkoutCalendar
                             year={year}
                             month={month}
