@@ -40,7 +40,7 @@ export default function Search() {
                 League Fitness
             </div>
             <div className="font-bold text-xl flex justify-center items-center p-3">
-                Search
+                Search Users
             </div>
 
             <div className="flex justify-center px-4 mb-6">
