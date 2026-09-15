@@ -117,7 +117,12 @@ export interface CardioLeaderboardEntry {
 }
 
 function parseTimeToSeconds(time: string): number {
-    const [minutes, seconds] = time.split(":").map(Number);
+    const parts = time.split(":").map(Number);
+    if (parts.length === 3) {
+        const [hours, minutes, seconds] = parts;
+        return hours * 3600 + minutes * 60 + seconds;
+    }
+    const [minutes, seconds] = parts;
     return (minutes || 0) * 60 + (seconds || 0);
 }
 

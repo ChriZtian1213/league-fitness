@@ -72,6 +72,9 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         if (/^\d+:\d{2}$/.test(trimmed)) {
             return trimmed;
         }
+        if (/^\d+:\d{2}:\d{2}$/.test(trimmed)) {
+            return trimmed;
+        }
         return null;
     }
 
@@ -223,6 +226,24 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         }
     }
 
+    function handleTimeChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 6); // up to hhmmss
+        let formatted = digitsOnly;
+
+        if (digitsOnly.length > 4) {
+            // h:mm:ss
+            const hours = digitsOnly.slice(0, digitsOnly.length - 4);
+            const minutes = digitsOnly.slice(-4, -2);
+            const seconds = digitsOnly.slice(-2);
+            formatted = `${hours}:${minutes}:${seconds}`;
+        } else if (digitsOnly.length > 2) {
+            // mm:ss
+            formatted = `${digitsOnly.slice(0, digitsOnly.length - 2)}:${digitsOnly.slice(-2)}`;
+        }
+
+        setTime(formatted);
+    }
+
     const inputClass = "border rounded-md px-3 py-2 bg-transparent text-neutral-200 w-32 text-center";
 
     return (
@@ -253,6 +274,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                     <input
                         ref={distanceInputRef}
                         type="number"
+                        inputMode="decimal"
                         placeholder="Distance (mi)"
                         value={distance}
                         onChange={(e) => setDistance(e.target.value)}
@@ -262,10 +284,11 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
 
                     <input
                         ref={timeInputRef}
+                        inputMode="numeric"
                         type="text"
-                        placeholder="Time (mm:ss)"
+                        placeholder="Time (h:mm:ss)"
                         value={time}
-                        onChange={(e) => setTime(e.target.value)}
+                        onChange={handleTimeChange}
                         onKeyDown={handleTimeKeyDown}
                         className={inputClass}
                     />
@@ -287,9 +310,11 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                                     <label className="text-xs text-neutral-400">Bar/base</label>
                                     <input
                                         type="number"
+                                        inputMode="decimal"
                                         value={barWeight}
                                         onChange={(e) => setBarWeight(e.target.value)}
                                         onKeyDown={handleBarWeightKeyDown}
+                                        onFocus={(e) => e.target.select()}
                                         className={inputClass}
                                     />
                                 </div>
@@ -316,6 +341,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                                     <input
                                         ref={repsInputRef}
                                         type="number"
+                                        inputMode="numeric"
                                         placeholder="Reps"
                                         value={reps}
                                         onChange={(e) => setReps(e.target.value)}
@@ -365,6 +391,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                             <input
                                 ref={weightInputRef}
                                 type="number"
+                                inputMode="decimal"
                                 placeholder="Weight (lbs)"
                                 value={weight}
                                 onChange={(e) => setWeight(e.target.value)}
@@ -377,6 +404,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                             <input
                                 ref={repsInputRef}
                                 type="number"
+                                inputMode="numeric"
                                 placeholder="Reps"
                                 value={reps}
                                 onChange={(e) => setReps(e.target.value)}
