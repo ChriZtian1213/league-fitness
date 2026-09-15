@@ -1,5 +1,5 @@
 import type { Route } from "./+types/leaderboard";
-import { useEffect } from "react";
+import {useEffect, useRef, useState} from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import { requireUserId } from "~/server/session.server";
 import { getUserById } from "~/server/user.server";
@@ -145,7 +145,31 @@ export default function Leaderboard() {
         categories, musclesForCategory, exercises, overviewSearch
     } = useLoaderData<typeof loader>();
 
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchParams, setSearchParams] = useSearchParams();
+    const [searchText, setSearchText] = useState(searchParams.get("q") ?? "");
+    const isInternalUpdate = useRef(false);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            isInternalUpdate.current = true;
+            const params = new URLSearchParams(searchParams);
+            if (searchText) params.set("q", searchText);
+            else params.delete("q");
+            setSearchParams(params, {replace: true});
+        }, 300);
+
+        return () => clearTimeout(timeout);
+    }, [searchText]);
+
+    useEffect(() => {
+        if (isInternalUpdate.current) {
+            isInternalUpdate.current = false;
+            return;
+        }
+        setSearchText(searchParams.get("q") ?? "");
+        searchInputRef.current?.focus();
+    }, [searchParams.get("q")]);
 
     const current = {
         period, scope, mode,
@@ -227,14 +251,9 @@ export default function Leaderboard() {
                     </div>
                     <div className="flex justify-center px-4 mb-3">
                         <input
-                            key={overviewSearch}
-                            defaultValue={overviewSearch}
-                            onChange={(e) => {
-                                const params = new URLSearchParams(searchParams);
-                                if (e.target.value) params.set("q", e.target.value);
-                                else params.delete("q");
-                                setSearchParams(params, {replace: true});
-                            }}
+                            ref={searchInputRef}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
                             placeholder="Search exercises..."
                             className="w-full max-w-md border rounded-md px-3 py-2 bg-transparent text-neutral-200"
                             autoComplete="off"
