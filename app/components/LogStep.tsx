@@ -282,7 +282,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
 
                     {usePlateCalc ? (
                         <div className="flex flex-col items-center gap-3">
-                            <div className="flex gap-2 items-end">
+                            <div className="flex flex-col sm:flex-row gap-2 items-center sm:items-end">
                                 <div className="flex flex-col items-center">
                                     <label className="text-xs text-neutral-400">Bar/base</label>
                                     <input
@@ -293,7 +293,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                                         className={inputClass}
                                     />
                                 </div>
-                                <p className="font-bold pb-2">+</p>
+                                <p className="font-bold sm:pb-2">+</p>
                                 <div className="flex flex-col items-center">
                                     <label className="text-xs text-neutral-400">Per side</label>
                                     <input
@@ -303,28 +303,25 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                                         className={`${inputClass} bg-neutral-700`}
                                     />
                                 </div>
-                                <p className="font-bold pb-2">x2 =</p>
+                                <p className="font-bold sm:pb-2">x2 =</p>
                                 <div className="flex flex-col items-center">
                                     <label className="text-xs text-yellow-400">Total</label>
                                     <div className={`${inputClass} bg-neutral-700 text-yellow-400 font-bold flex items-center justify-center`}>
                                         {(Number(barWeight) || 0) + perSideFromPlates * 2}
                                     </div>
                                 </div>
-                                <div className="flex gap-2 items-end">
-                                    {/* bar / per-side / total, unchanged */}
-                                    <p className="font-bold pb-2">x</p>
-                                    <div className="flex flex-col items-center">
-                                        <label className="text-xs text-neutral-400">Reps</label>
-                                        <input
-                                            ref={repsInputRef}
-                                            type="number"
-                                            placeholder="Reps"
-                                            value={reps}
-                                            onChange={(e) => setReps(e.target.value)}
-                                            onKeyDown={handleRepsKeyDown}
-                                            className={inputClass}
-                                        />
-                                    </div>
+                                <p className="font-bold sm:pb-2">x</p>
+                                <div className="flex flex-col items-center">
+                                    <label className="text-xs text-neutral-400">Reps</label>
+                                    <input
+                                        ref={repsInputRef}
+                                        type="number"
+                                        placeholder="Reps"
+                                        value={reps}
+                                        onChange={(e) => setReps(e.target.value)}
+                                        onKeyDown={handleRepsKeyDown}
+                                        className={inputClass}
+                                    />
                                 </div>
                             </div>
 
