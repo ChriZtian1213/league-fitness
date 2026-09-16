@@ -679,7 +679,10 @@ export async function getAllExerciseNames(): Promise<string[]> {
 
 // Returns the set of dates (YYYY-MM-DD, in local server time) this user
 // logged at least one workout on — used to highlight days on the calendar.
-export async function getWorkoutDatesForUser(userId: string): Promise<string[]> {
+export async function getWorkoutDatesForUser(
+    userId: string,
+    timezone: string = "UTC"
+): Promise<string[]> {
     const db = await connectDB();
 
     const cursorResults = await db
@@ -689,7 +692,11 @@ export async function getWorkoutDatesForUser(userId: string): Promise<string[]> 
             {
                 $group: {
                     _id: {
-                        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$createdAt",
+                            timezone: timezone,
+                        },
                     },
                 },
             },

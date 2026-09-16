@@ -29,10 +29,18 @@ function toDateStr(date: Date) {
 
 export async function loader({request}: Route.LoaderArgs){
     const userId = await requireUserId(request);
+
+    const cookieHeader = request.headers.get("Cookie") ?? "";
+    const timezoneMatch = cookieHeader.match(/(?:^|;\s*)timezone=([^;]*)/);
+
+    const timezone = timezoneMatch
+        ? decodeURIComponent(timezoneMatch[1])
+        : "UTC";
+
     const user = await getUserById(userId);
     const workouts = await getWorkoutsForUser(userId);
     const exerciseCatalog = await getExerciseCatalog();
-    const loggedDates = await getWorkoutDatesForUser(userId);
+    const loggedDates = await getWorkoutDatesForUser(userId, timezone);
     const routines = await getRoutinesForUser(userId);
     const allExerciseNames = await getAllExerciseNames();
 
@@ -43,7 +51,18 @@ export async function loader({request}: Route.LoaderArgs){
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
     const date = url.searchParams.get("date") ?? todayDateStr;
 
-    return {user, workouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames};
+    return {
+        user,
+        workouts,
+        exerciseCatalog,
+        loggedDates,
+        year,
+        month,
+        date,
+        todayDateStr,
+        routines,
+        allExerciseNames
+    };
 }
 
 export async function action({request}: Route.ActionArgs){

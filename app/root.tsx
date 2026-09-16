@@ -6,7 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-
+import { TimezoneCookie } from "~/components/TimezoneCookie";
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -33,6 +33,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
+        <TimezoneCookie/>
         {children}
         <ScrollRestoration />
         <Scripts />
