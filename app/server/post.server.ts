@@ -46,15 +46,30 @@ export async function createPost(userId: string, data: CreatePostInput) {
     return result.insertedId.toString();
 }
 
-export async function getFeed(viewerUserId: string, scope: FeedScope = "following") {
+export async function getFeed(
+    viewerUserId: string,
+    scope: FeedScope = "following"
+) {
+    const start = performance.now();
+
     const db = await connectDB();
+    console.log("getFeed - connectDB:", performance.now() - start);
+
     const viewerObjectId = new ObjectId(viewerUserId);
 
     const match: Record<string, any> = {};
 
     if (scope === "following") {
         const followedIds = await getFollowedObjectIds(viewerUserId);
-        match.userId = { $in: [...followedIds, viewerObjectId] };
+
+        console.log(
+            "getFeed - getFollowedObjectIds:",
+            performance.now() - start
+        );
+
+        match.userId = {
+            $in: [...followedIds, viewerObjectId]
+        };
     }
 
     const pipeline: any[] = [];
@@ -65,19 +80,65 @@ export async function getFeed(viewerUserId: string, scope: FeedScope = "followin
 
     pipeline.push(
         { $sort: { createdAt: -1 } },
-        { $limit: 50 }
+        { $limit: 50 },
+        {
+            $project: {
+                imageData: 0,
+            },
+        }
     );
 
-    const posts = await db.collection<PostDoc>("posts").aggregate(pipeline).toArray();
+    const explain = await db
+        .collection<PostDoc>("posts")
+        .aggregate(pipeline)
+        .explain("executionStats");
 
-    // Fetch the distinct authors separately instead of $lookup — avoids
-    // the confirmed join-performance issue.
-    const authorIds = [...new Set(posts.map((p: any) => p.userId.toString()))].map((id) => new ObjectId(id));
+    console.log(
+        "FEED EXPLAIN:",
+        JSON.stringify({
+            executionTimeMillis: explain.executionStats?.executionTimeMillis,
+            nReturned: explain.executionStats?.nReturned,
+            totalDocsExamined: explain.executionStats?.totalDocsExamined,
+            totalKeysExamined: explain.executionStats?.totalKeysExamined,
+        }, null, 2)
+    );
+
+    const posts = await db
+        .collection<PostDoc>("posts")
+        .aggregate(pipeline)
+        .toArray();
+
+    console.log(
+        "getFeed - posts query:",
+        performance.now() - start,
+        "posts:",
+        posts.length
+    );
+
+    const authorIds = [
+        ...new Set(posts.map((p: any) => p.userId.toString()))
+    ].map((id) => new ObjectId(id));
+
     const rawAuthors = authorIds.length
-        ? await db.collection("users").find({ _id: { $in: authorIds } })
-            .project({ displayName: 1, profilePicture: 1, followerIds: 1 })
+        ? await db
+            .collection("users")
+            .find({ _id: { $in: authorIds } })
+            .project({
+                displayName: 1,
+                profilePicture: 1,
+                followerIds: 1
+            })
             .toArray()
         : [];
+
+    console.log(
+        "getFeed - authors query:",
+        performance.now() - start,
+        "authors:",
+        rawAuthors.length
+    );
+
+
     const authors = rawAuthors as { _id: ObjectId; displayName: string; profilePicture?: string; followerIds?: ObjectId[] }[];
     const authorMap = new Map(authors.map((a) => [a._id.toString(), a]));
 

@@ -15,16 +15,44 @@ import {getUnreadMessageCount} from "~/server/message.server";
 export type PostEntry = Awaited<ReturnType<typeof getFeed>>[number];
 
 export async function loader({request}: Route.LoaderArgs) {
+    const start = performance.now();
+
     const userId = await requireUserId(request);
+    console.log("requireUserId:", performance.now() - start);
+
     const user = await getUserById(userId);
+    console.log("getUserById:", performance.now() - start);
+
     const url = new URL(request.url);
     const requestedScope = url.searchParams.get("scope");
-    const scope: FeedScope = requestedScope === "global" ? "global" : "following";
+    const scope: FeedScope =
+        requestedScope === "global" ? "global" : "following";
+
     const posts = await getFeed(userId, scope);
-    const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
+    console.log("getFeed:", performance.now() - start);
+
+    const cooldownSeconds =
+        user && !user.emailVerified
+            ? await getResendCooldownSeconds(userId)
+            : 0;
+    console.log("cooldown:", performance.now() - start);
+
     const unreadCount = await getUnreadNotificationCount(userId);
+    console.log("notifications:", performance.now() - start);
+
     const unreadMessageCount = await getUnreadMessageCount(userId);
-    return {user, posts, scope, cooldownSeconds, unreadCount, unreadMessageCount};
+    console.log("messages:", performance.now() - start);
+
+    console.log("TOTAL HOME LOADER:", performance.now() - start);
+
+    return {
+        user,
+        posts,
+        scope,
+        cooldownSeconds,
+        unreadCount,
+        unreadMessageCount
+    };
 }
 
 export async function action({request}: Route.ActionArgs) {
