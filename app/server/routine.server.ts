@@ -55,25 +55,27 @@ export async function updateRoutine(userId: string, routineId: string, name: str
     );
 }
 
-export async function reorderRoutine(userId: string, routineId: string, direction: "up" | "down"): Promise<void> {
+export async function reorderRoutines(
+    userId: string,
+    orderedRoutineIds: string[]
+): Promise<void> {
     const db = await connectDB();
-    const routines = await getRoutinesForUser(userId);
 
-    const index = routines.findIndex((r) => r.id === routineId);
-    if (index === -1) return;
+    const userObjectId = new ObjectId(userId);
 
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= routines.length) return;
+    for (let index = 0; index < orderedRoutineIds.length; index++) {
+        const routineId = orderedRoutineIds[index];
 
-    const current = routines[index];
-    const swapWith = routines[swapIndex];
-
-    await db.collection("routines").updateOne(
-        { _id: new ObjectId(current.id), userId: new ObjectId(userId) },
-        { $set: { order: swapWith.order } }
-    );
-    await db.collection("routines").updateOne(
-        { _id: new ObjectId(swapWith.id), userId: new ObjectId(userId) },
-        { $set: { order: current.order } }
-    );
+        await db.collection("routines").updateOne(
+            {
+                _id: new ObjectId(routineId),
+                userId: userObjectId,
+            },
+            {
+                $set: {
+                    order: index,
+                },
+            }
+        );
+    }
 }

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import {
+import { useEffect, useState } from "react";import {
     DndContext,
     closestCenter,
     PointerSensor,
@@ -138,7 +137,9 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines, edit
         );
     }
 
-    useState(() => setLocalRoutines(routines));
+    useEffect(() => {
+        setLocalRoutines(routines);
+    }, [routines]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {activationConstraint: {distance: 8}}),

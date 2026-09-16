@@ -15,8 +15,9 @@ import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseC
 import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
-import {createRoutine, deleteRoutine, getRoutinesForUser, updateRoutine, reorderRoutine} from "~/server/routine.server";
-import {RoutinesStep} from "~/components/RoutinesStep";
+import {
+    createRoutine, deleteRoutine, getRoutinesForUser, updateRoutine, reorderRoutines
+} from "~/server/routine.server";import {RoutinesStep} from "~/components/RoutinesStep";
 import {RoutineHub} from "~/components/RoutineHub";
 import {createExercise} from "~/server/exercise.server";
 
@@ -105,12 +106,16 @@ export async function action({request}: Route.ActionArgs){
         }
     }
 
-    if (intent === "reorderRoutine") {
-        const routineId = formData.get("routineId");
-        const direction = formData.get("direction");
-        if (typeof routineId === "string" && (direction === "up" || direction === "down")) {
-            await reorderRoutine(userId, routineId, direction);
+    if (intent === "reorderRoutines") {
+        const orderedRoutineIds = formData.getAll("orderedIds");
+
+        if (orderedRoutineIds.every((id) => typeof id === "string")) {
+            await reorderRoutines(
+                userId,
+                orderedRoutineIds as string[]
+            );
         }
+
         return {ok: true};
     }
 
@@ -464,7 +469,9 @@ export default function Log(){
                             onReorderRoutines={(orderedRoutineIds) => {
                                 const formData = new FormData();
                                 formData.set("intent", "reorderRoutines");
-                                orderedRoutineIds.forEach((id) => formData.append("orderedIds", id));
+                                orderedRoutineIds.forEach((id) => {
+                                    formData.append("orderedIds", id);
+                                });
                                 fetcher.submit(formData, {method: "post"});
                             }}
                             onStartRoutine={(routine) => flow.startRoutine(routine)}
