@@ -46,8 +46,20 @@ export async function loader({request, params}: Route.LoaderArgs) {
 
 
     const url = new URL(request.url);
+    const cookieHeader = request.headers.get("Cookie") ?? "";
+    const timezoneMatch = cookieHeader.match(/(?:^|;\s*)timezone=([^;]*)/);
+    const timezone = timezoneMatch
+        ? decodeURIComponent(timezoneMatch[1])
+        : "UTC";
+
     const now = new Date();
-    const todayDateStr = toDateStr(now);
+    const todayDateStr = new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(now);
+
     const year = Number(url.searchParams.get("year")) || now.getFullYear();
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
 
@@ -57,7 +69,11 @@ export async function loader({request, params}: Route.LoaderArgs) {
     const followerCount = await getFollowerCount(profileUserId);
     const followingCount = await getFollowingCount(profileUserId);
     const viewerIsFollowing = isOwnProfile ? false : await isFollowing(viewerId, profileUserId);
-    const loggedDates = await getPublicWorkoutDates(viewerId, profileUserId);
+    const loggedDates = await getPublicWorkoutDates(
+        viewerId,
+        profileUserId,
+        timezone
+    );
 
     return {
         user: {...user, profilePicture}, posts, reposts, postCount, followerCount, followingCount,

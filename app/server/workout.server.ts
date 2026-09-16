@@ -650,7 +650,11 @@ export async function getWorkoutDatesForUser(
     return (cursorResults as { _id: string }[]).map((doc) => doc._id);
 }
 
-export async function getPublicWorkoutDates(viewerUserId: string, profileUserId: string): Promise<string[] | null> {
+export async function getPublicWorkoutDates(
+    viewerUserId: string,
+    profileUserId: string,
+    timezone: string
+): Promise<string[] | null> {
     const db = await connectDB();
 
     const isOwnCalendar = viewerUserId === profileUserId;
@@ -664,5 +668,5 @@ export async function getPublicWorkoutDates(viewerUserId: string, profileUserId:
         if (!isPublic) return null;
     }
 
-    return getWorkoutDatesForUser(profileUserId);
+    return getWorkoutDatesForUser(profileUserId, timezone);
 }
