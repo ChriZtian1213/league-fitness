@@ -1,10 +1,13 @@
 import { useState } from "react";
 import type {Step, Category, Muscle} from "../../types/workout.ts";
+import type { RoutineEntry } from "~/server/routine.server";
 
 export function useWorkoutFlow(){
     const [step, setStep] = useState<Step>("category")
     const [category, setCategory] = useState<Category | null>(null)
     const [muscle, setMuscle] = useState<Muscle | null>(null)
+    const [activeRoutine, setActiveRoutine] = useState<RoutineEntry | null>(null)
+    const [editIntent, setEditIntent] = useState(false)
 
     function next(categoryOverride?: Category){
         const currentCategory = categoryOverride ?? category
@@ -16,11 +19,9 @@ export function useWorkoutFlow(){
                 setStep("muscle");
             }
         }
-
         else if (step === "muscle") {
             setStep("exercise");
         }
-
         else if (step === "exercise") {
             setStep("log");
         }
@@ -34,18 +35,44 @@ export function useWorkoutFlow(){
                 setStep("muscle")
             }
         }
-
         else if (step === "muscle") {
             setStep("category")
         }
-
         else if (step === "log") {
-            setStep("exercise")
+            setStep(activeRoutine ? "routineHub" : "exercise")
         }
+        else if (step === "routines") {
+            setStep("category")
+        }
+        else if (step === "routineHub") {
+            exitRoutine();
+        }
+    }
+
+    function startRoutine(routine: RoutineEntry) {
+        setActiveRoutine(routine);
+        setStep("routineHub");
+    }
+
+    function exitRoutine() {
+        setActiveRoutine(null);
+        setEditIntent(false);
+        setStep("category");
+    }
+
+    function returnToRoutineHub() {
+        setStep("routineHub");
+    }
+
+    function startEditingActiveRoutine() {
+        setEditIntent(true);
+        setStep("routines");
     }
 
     return {
         step, category, muscle, setCategory,
-        setMuscle, next, back, setStep
+        setMuscle, next, back, setStep,
+        activeRoutine, setActiveRoutine, startRoutine, exitRoutine, returnToRoutineHub,
+        editIntent, setEditIntent, startEditingActiveRoutine,
     }
 }

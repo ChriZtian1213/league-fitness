@@ -11,10 +11,13 @@ import {LogStep} from "~/components/LogStep";
 import {NavBar} from "~/components/NavBar";
 import {WorkoutCalendar} from "~/components/WorkoutCalendar";
 import { useFetcher, useLoaderData} from "react-router";
-import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser} from "~/server/workout.server";
+import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser, getAllExerciseNames} from "~/server/workout.server";
 import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
+import {createRoutine, deleteRoutine, getRoutinesForUser, updateRoutine} from "~/server/routine.server";
+import {RoutinesStep} from "~/components/RoutinesStep";
+import {RoutineHub} from "~/components/RoutineHub";
 
 function toDateStr(date: Date) {
     const d = new Date(date);
@@ -30,6 +33,8 @@ export async function loader({request}: Route.LoaderArgs){
     const workouts = await getWorkoutsForUser(userId);
     const exerciseCatalog = await getExerciseCatalog();
     const loggedDates = await getWorkoutDatesForUser(userId);
+    const routines = await getRoutinesForUser(userId);
+    const allExerciseNames = await getAllExerciseNames();
 
     const url = new URL(request.url);
     const now = new Date();
@@ -38,7 +43,7 @@ export async function loader({request}: Route.LoaderArgs){
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
     const date = url.searchParams.get("date") ?? todayDateStr;
 
-    return {user, workouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr};
+    return {user, workouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames};
 }
 
 export async function action({request}: Route.ActionArgs){
@@ -47,6 +52,32 @@ export async function action({request}: Route.ActionArgs){
     const tempId = formData.get("tempId");
 
     const intent = formData.get("intent");
+    if (intent === "createRoutine") {
+        const name = formData.get("name");
+        const exerciseNames = formData.getAll("exerciseNames");
+        if (typeof name === "string" && name.trim() && exerciseNames.length > 0) {
+            await createRoutine(userId, name.trim(), exerciseNames as string[]);
+        }
+        return {ok: true};
+    }
+
+    if (intent === "deleteRoutine") {
+        const routineId = formData.get("routineId");
+        if (typeof routineId === "string") {
+            await deleteRoutine(userId, routineId);
+        }
+        return {ok: true};
+    }
+
+    if (intent === "updateRoutine") {
+        const routineId = formData.get("routineId");
+        const name = formData.get("name");
+        const exerciseNames = formData.getAll("exerciseNames");
+        if (typeof routineId === "string" && typeof name === "string" && name.trim() && exerciseNames.length > 0) {
+            await updateRoutine(userId, routineId, name.trim(), exerciseNames as string[]);
+        }
+        return {ok: true};
+    }
 
     if (intent === "delete"){
         const id = formData.get("id");
@@ -135,12 +166,12 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 }
 
 export default function Log(){
-    const {user, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr} = useLoaderData<typeof loader>();
-    const clientToday = useLocalToday(todayDateStr);
+    const {workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames} = useLoaderData<typeof loader>();    const clientToday = useLocalToday(todayDateStr);
     const navigate = useNavigate();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [showCalendar, setShowCalendar] = useState(date !== clientToday);
+    const [pendingReturnToHub, setPendingReturnToHub] = useState(false);
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
@@ -168,9 +199,24 @@ export default function Log(){
     }, [clientToday]);
 
     useEffect(() => {
+        if (flow.activeRoutine) {
+            const updated = routines.find((r) => r.id === flow.activeRoutine!.id);
+            if (updated) {
+                flow.setActiveRoutine(updated);
+                if (pendingReturnToHub) {
+                    flow.returnToRoutineHub();
+                    setPendingReturnToHub(false);
+                }
+            }
+        }
+    }, [routines]);
+
+    useEffect(() => {
         if (fetcher.data?.error && fetcher.data?.tempId) {
             setWorkouts((prev) => prev.filter((w) => w.id !== fetcher.data.tempId));
         }
+
+
 
         if (fetcher.data?.workout && fetcher.data?.tempId) {
             setWorkouts((prev) =>
@@ -178,6 +224,8 @@ export default function Log(){
             );
         }
     }, [fetcher.data]);
+
+
 
 
     function addWorkout(workout: WorkoutEntry) {
@@ -220,17 +268,27 @@ export default function Log(){
         }
 
         return (
-            <div className="flex justify-center items-center gap-1 text-xs text-neutral-400 mb-2">
-                {parts.map((p, i) => (
-                    <span key={i} className="flex items-center gap-1">
+            <>
+                {flow.activeRoutine && flow.step !== "routineHub" && flow.step !== "log" && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 mb-2">
+                        <span>Adding to "{flow.activeRoutine.name}"</span>
+                        <button onClick={() => flow.returnToRoutineHub()} className="underline text-blue-400">
+                            Back to routine
+                        </button>
+                    </div>
+                )}
+                <div className="flex justify-center items-center gap-1 text-xs text-neutral-400 mb-2">
+                    {parts.map((p, i) => (
+                        <span key={i} className="flex items-center gap-1">
                     <button onClick={p.onClick} className="underline hover:text-neutral-200">
                         {p.label}
                     </button>
                     <span>›</span>
                 </span>
-                ))}
-                <span className="text-neutral-200 font-bold capitalize">{flow.step}</span>
-            </div>
+                    ))}
+                    <span className="text-neutral-200 font-bold capitalize">{flow.step}</span>
+                </div>
+            </>
         );
     }
 
@@ -292,6 +350,76 @@ export default function Log(){
                                 setSelectedExercise(null)
                                 flow.next(c)
                             }}
+                            onSelectRoutines={() => flow.setStep("routines")}
+                        />
+                    )}
+
+                    {flow.step === "routineHub" && (() => {
+                        console.log("routineHub render check:", {
+                            activeRoutine: flow.activeRoutine,
+                            matchFound: flow.activeRoutine ? routines.some((r) => r.id === flow.activeRoutine!.id) : "no active routine",
+                            routinesIds: routines.map((r) => r.id),
+                        });
+                        return null;
+                    })()}
+
+                    {flow.step === "routineHub" && (() => {
+                        console.log("routineHub render check:", {
+                            activeRoutine: flow.activeRoutine,
+                            matchFound: flow.activeRoutine ? routines.some((r) => r.id === flow.activeRoutine!.id) : "no active routine",
+                            routinesIds: routines.map((r) => r.id),
+                        });
+                        return null;
+                    })()}
+
+                    {flow.step === "routineHub" && flow.activeRoutine && routines.some((r) => r.id === flow.activeRoutine!.id) && (
+                        <RoutineHub
+                            routine={flow.activeRoutine}
+                            workouts={workouts}
+                            todayDateStr={todayDateStr}
+                            onSelectExercise={(exerciseName) => {
+                                const ex = exercises.find((e) => e.name === exerciseName);
+                                if (ex) {
+                                    setSelectedExercise(ex);
+                                    flow.setStep("log");
+                                }
+                            }}
+                            onEditRoutine={() => flow.startEditingActiveRoutine()}
+                            onBack={() => flow.exitRoutine()}
+                            onHome={() => flow.exitRoutine()}
+                        />
+                    )}
+
+                    {flow.step === "routines" && (
+                        <RoutinesStep
+                            routines={routines}
+                            allExerciseNames={allExerciseNames}
+                            editRoutineId={flow.editIntent ? flow.activeRoutine?.id : undefined}
+                            onStartRoutine={(routine) => {
+                                flow.startRoutine(routine);
+                            }}
+                            onCreateRoutine={(name, exerciseNames) => {
+                                // ...unchanged
+                            }}
+                            onUpdateRoutine={(routineId, name, exerciseNames) => {
+                                const formData = new FormData();
+                                formData.set("intent", "updateRoutine");
+                                formData.set("routineId", routineId);
+                                formData.set("name", name);
+                                exerciseNames.forEach((n) => formData.append("exerciseNames", n));
+                                fetcher.submit(formData, {method: "post"});
+
+                                flow.setActiveRoutine({id: routineId, name, exerciseNames});
+                                flow.setEditIntent(false);
+                                flow.returnToRoutineHub();
+                            }}
+                            onDeleteRoutine={(routineId) => {
+                                // ...unchanged
+                            }}
+                            onBack={() => {
+                                flow.setEditIntent(false);
+                                flow.exitRoutine();
+                            }}
                         />
                     )}
 
@@ -345,12 +473,22 @@ export default function Log(){
                             exercise={selectedExercise}
                             personalBest={pickBestForExercise(workouts, selectedExercise.name)}
                             onSubmit={addWorkout}
-                            onBack={flow.back}
+                            onBack={() => {
+                                if (flow.activeRoutine) {
+                                    flow.returnToRoutineHub();
+                                } else {
+                                    flow.back();
+                                }
+                            }}
                             onHome={() => {
-                                setSelectedExercise(null)
-                                flow.setCategory(null)
-                                flow.setMuscle(null)
-                                flow.setStep("category")
+                                if (flow.activeRoutine) {
+                                    flow.returnToRoutineHub();
+                                } else {
+                                    setSelectedExercise(null)
+                                    flow.setCategory(null)
+                                    flow.setMuscle(null)
+                                    flow.setStep("category")
+                                }
                             }}
                         />
                     )}
