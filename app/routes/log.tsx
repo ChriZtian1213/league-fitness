@@ -385,7 +385,11 @@ export default function Log(){
                                 }
                             }}
                             onEditRoutine={() => flow.startEditingActiveRoutine()}
-                            onBack={() => flow.exitRoutine()}
+                            onReturnToRoutines={() => {
+                                flow.setEditIntent(false);
+                                flow.setActiveRoutine(null);
+                                flow.returnToRoutines();
+                            }}
                             onHome={() => flow.exitRoutine()}
                         />
                     )}

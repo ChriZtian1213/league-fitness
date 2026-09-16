@@ -7,8 +7,8 @@ type Props = {
     todayDateStr: string;
     onSelectExercise: (exerciseName: string) => void;
     onEditRoutine: () => void;
-    onBack: () => void;
     onHome: () => void;
+    onReturnToRoutines: () => void;
 }
 
 function toDateStr(date: Date) {
@@ -16,7 +16,7 @@ function toDateStr(date: Date) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function RoutineHub({routine, workouts, todayDateStr, onSelectExercise, onEditRoutine, onBack, onHome}: Props) {
+export function RoutineHub({routine, workouts, todayDateStr, onSelectExercise, onEditRoutine, onHome, onReturnToRoutines}: Props) {
     const loggedToday = new Set(
         workouts
             .filter((w) => toDateStr(w.createdAt) === todayDateStr)
@@ -52,7 +52,7 @@ export function RoutineHub({routine, workouts, todayDateStr, onSelectExercise, o
             </button>
 
             <div className="flex flex-row">
-                <button className="mt-4 size-16 border" onClick={onBack}>
+                <button className="mt-4 size-16 border" onClick={onReturnToRoutines}>
                     🔙 Return
                 </button>
                 <button className="mt-4 size-16 border" onClick={onHome}>
