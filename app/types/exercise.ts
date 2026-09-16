@@ -8,7 +8,7 @@ export type Exercise = {
     loggingType?: LoggingType
     allowedLoggingTypes?: LoggingType[]
     createdBy?: string
-    createdAt?: number
+    createdAt?: Date
 }
 
 export type LoggingType =

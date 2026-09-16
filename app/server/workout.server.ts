@@ -4,6 +4,7 @@ import { getFollowedObjectIds, getMutualFollowObjectIds } from "./user.server";
 import type { Category, Muscle} from "~/types/workout";
 import type { LoggingType } from "~/types/exercise";
 import { HARDCODED_EXERCISES } from "~/data/exercises";
+import {getExercises} from "~/server/exercise.server";
 
 export interface ExerciseOverviewEntry {
     exercise: string;
@@ -338,100 +339,38 @@ export async function getExerciseCatalog(): Promise<ExerciseCatalogEntry[]> {
         return catalogCache.data;
     }
 
-    const db = await connectDB();
+    const customExercises = await getExercises();
 
-    const results = await db
-        .collection("workouts")
-        .aggregate([
-            {
-                $group: {
-                    _id: {
-                        category: "$category",
-                        muscle: "$muscle",
-                        exercise: "$exercise",
-                        userId: "$userId",
-                    },
-                    loggingType: { $first: "$loggingType" },
-                },
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "_id.userId",
-                    foreignField: "_id",
-                    as: "user",
-                },
-            },
-            { $unwind: "$user" },
-            { $match: { "user.emailVerified": true } },
-            {
-                $group: {
-                    _id: {
-                        category: "$_id.category",
-                        muscle: "$_id.muscle",
-                        exercise: "$_id.exercise",
-                    },
-                    loggingType: { $first: "$loggingType" },
-                },
-            },
-            {
-                $sort: {
-                    "_id.exercise": 1,
-                },
-            },
-        ])
-        .toArray();
-
-    const data = results.map((doc: any) => {
-        const hardcodedExercise = HARDCODED_EXERCISES.find(
-            (exercise) => exercise.name === doc._id.exercise
-        );
-
-        if (hardcodedExercise) {
-            return {
-                category: hardcodedExercise.category,
-                muscle: hardcodedExercise.muscle,
-                exercise: hardcodedExercise.name,
-                loggingType: hardcodedExercise.loggingType,
-                allowedLoggingTypes: hardcodedExercise.allowedLoggingTypes,
-            };
-        }
-
-        const loggingType = doc.loggingType as LoggingType | undefined;
-
-        return {
-            category: doc._id.category,
-            muscle: doc._id.muscle,
-            exercise: doc._id.exercise,
-            loggingType,
-            allowedLoggingTypes: loggingType === "bodyweight"
-                ? ["bodyweight"] as LoggingType[]
-                : loggingType === "dumbbell"
-                    ? ["dumbbell", "standard"] as LoggingType[]
-                    : loggingType === "starting-weight"
-                        ? ["standard", "starting-weight"] as LoggingType[]
-                        : ["standard"] as LoggingType[],
-        };
-    });
-
-    const customExercises = data.filter(
-        (dbExercise) =>
-            !HARDCODED_EXERCISES.some(
-                (hardcodedExercise) => hardcodedExercise.name === dbExercise.exercise
-            )
+    const hardcodedCatalog: ExerciseCatalogEntry[] = HARDCODED_EXERCISES.map(
+        (exercise) => ({
+            category: exercise.category,
+            muscle: exercise.muscle,
+            exercise: exercise.name,
+            loggingType: exercise.loggingType,
+            allowedLoggingTypes: exercise.allowedLoggingTypes,
+        })
     );
 
-    const hardcodedCatalog = HARDCODED_EXERCISES.map((exercise) => ({
-        category: exercise.category,
-        muscle: exercise.muscle,
-        exercise: exercise.name,
-        loggingType: exercise.loggingType,
-        allowedLoggingTypes: exercise.allowedLoggingTypes,
-    }));
+    const customCatalog: ExerciseCatalogEntry[] = customExercises
+        .filter(
+            (customExercise) =>
+                !HARDCODED_EXERCISES.some(
+                    (hardcodedExercise) =>
+                        hardcodedExercise.name.toLowerCase() ===
+                        customExercise.name.toLowerCase()
+                )
+        )
+        .map((exercise) => ({
+            category: exercise.category,
+            muscle: exercise.muscle,
+            exercise: exercise.name,
+            loggingType: exercise.loggingType,
+            allowedLoggingTypes: exercise.allowedLoggingTypes,
+        }));
 
     const mergedCatalog = [
         ...hardcodedCatalog,
-        ...customExercises,
+        ...customCatalog,
     ];
 
     catalogCache = {
@@ -662,19 +601,24 @@ export async function getLoggedExerciseNames(): Promise<string[]> {
 // a new custom exercise — helps people converge on consistent naming
 // instead of creating near-duplicates like "Cable Fly" vs "Cable Flys".
 export async function getAllExerciseNames(): Promise<string[]> {
-    const db = await connectDB();
+    const customExercises = await getExercises();
 
-    const cursorResults = await db
-        .collection("workouts")
-        .aggregate([
-            { $group: { _id: "$exercise" } },
-            { $sort: { _id: 1 } },
-        ])
-        .toArray();
+    const hardcodedNames = HARDCODED_EXERCISES.map(
+        (exercise) => exercise.name
+    );
 
-    const results = cursorResults as { _id: string }[];
+    const customNames = customExercises
+        .filter(
+            (customExercise) =>
+                !HARDCODED_EXERCISES.some(
+                    (hardcodedExercise) =>
+                        hardcodedExercise.name.toLowerCase() ===
+                        customExercise.name.toLowerCase()
+                )
+        )
+        .map((exercise) => exercise.name);
 
-    return results.map((doc) => doc._id);
+    return [...hardcodedNames, ...customNames].sort();
 }
 
 // Returns the set of dates (YYYY-MM-DD, in local server time) this user

@@ -8,6 +8,20 @@ export function useWorkoutFlow(){
     const [muscle, setMuscle] = useState<Muscle | null>(null)
     const [activeRoutine, setActiveRoutine] = useState<RoutineEntry | null>(null)
     const [editIntent, setEditIntent] = useState(false)
+    const [editReturnStep, setEditReturnStep] = useState<"routines" | "routineHub">("routines");
+
+    function startEditingFromRoutinesList(routine: RoutineEntry) {
+        setEditIntent(true);
+        setEditReturnStep("routines");
+        setActiveRoutine(routine);
+        setStep("routines");
+    }
+
+    function startEditingActiveRoutine() {
+        setEditIntent(true);
+        setEditReturnStep("routineHub");
+        setStep("routines");
+    }
 
     function next(categoryOverride?: Category){
         const currentCategory = categoryOverride ?? category
@@ -48,9 +62,6 @@ export function useWorkoutFlow(){
         else if (step === "routines") {
             setStep("category")
         }
-        else if (step === "routineHub") {
-            exitRoutine();
-        }
     }
 
     function startRoutine(routine: RoutineEntry) {
@@ -68,15 +79,11 @@ export function useWorkoutFlow(){
         setStep("routineHub");
     }
 
-    function startEditingActiveRoutine() {
-        setEditIntent(true);
-        setStep("routines");
-    }
 
     return {
         step, category, muscle, setCategory,
         setMuscle, next, back, setStep,
         activeRoutine, setActiveRoutine, startRoutine, exitRoutine, returnToRoutineHub,
-        editIntent, setEditIntent, startEditingActiveRoutine, returnToRoutines,
+        editIntent, setEditIntent, startEditingActiveRoutine, returnToRoutines, editReturnStep, startEditingFromRoutinesList
     }
 }

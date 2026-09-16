@@ -15,9 +15,10 @@ import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseC
 import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
-import {createRoutine, deleteRoutine, getRoutinesForUser, updateRoutine} from "~/server/routine.server";
+import {createRoutine, deleteRoutine, getRoutinesForUser, updateRoutine, reorderRoutine} from "~/server/routine.server";
 import {RoutinesStep} from "~/components/RoutinesStep";
 import {RoutineHub} from "~/components/RoutineHub";
+import {createExercise} from "~/server/exercise.server";
 
 function toDateStr(date: Date) {
     const d = new Date(date);
@@ -71,6 +72,48 @@ export async function action({request}: Route.ActionArgs){
     const tempId = formData.get("tempId");
 
     const intent = formData.get("intent");
+
+    if (intent === "createExercise") {
+        const name = formData.get("name");
+        const category = formData.get("category");
+        const muscle = formData.get("muscle");
+        const loggingTypes = formData.getAll("loggingTypes");
+
+        if (
+            typeof name !== "string" ||
+            typeof category !== "string" ||
+            loggingTypes.length === 0
+        ) {
+            return {error: "Missing exercise name, category, or logging type."};
+        }
+
+        try {
+            const exercise = await createExercise({
+                name: name.trim(),
+                category: category as Exercise["category"],
+                muscle: typeof muscle === "string" && muscle
+                    ? muscle as Exercise["muscle"]
+                    : undefined,
+                loggingType: loggingTypes[0] as LoggingType,
+                allowedLoggingTypes: loggingTypes as LoggingType[],
+                createdBy: userId,
+            });
+            return {ok: true, exercise};
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Could not create exercise.";
+            return {error: message};
+        }
+    }
+
+    if (intent === "reorderRoutine") {
+        const routineId = formData.get("routineId");
+        const direction = formData.get("direction");
+        if (typeof routineId === "string" && (direction === "up" || direction === "down")) {
+            await reorderRoutine(userId, routineId, direction);
+        }
+        return {ok: true};
+    }
+
     if (intent === "createRoutine") {
         const name = formData.get("name");
         const exerciseNames = formData.getAll("exerciseNames");
@@ -206,6 +249,15 @@ export default function Log(){
                 allowedLoggingTypes: c.allowedLoggingTypes,
             }))
     );
+
+    useEffect(() => {
+        if (fetcher.data?.ok && fetcher.data?.exercise) {
+            const newExercise: Exercise = fetcher.data.exercise;
+            setExercises((prev) => [...prev, newExercise]);
+            setSelectedExercise(newExercise);
+            flow.next();
+        }
+    }, [fetcher.data]);
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -382,14 +434,6 @@ export default function Log(){
                         return null;
                     })()}
 
-                    {flow.step === "routineHub" && (() => {
-                        console.log("routineHub render check:", {
-                            activeRoutine: flow.activeRoutine,
-                            matchFound: flow.activeRoutine ? routines.some((r) => r.id === flow.activeRoutine!.id) : "no active routine",
-                            routinesIds: routines.map((r) => r.id),
-                        });
-                        return null;
-                    })()}
 
                     {flow.step === "routineHub" && flow.activeRoutine && routines.some((r) => r.id === flow.activeRoutine!.id) && (
                         <RoutineHub
@@ -403,8 +447,7 @@ export default function Log(){
                                     flow.setStep("log");
                                 }
                             }}
-                            onEditRoutine={() => flow.startEditingActiveRoutine()}
-                            onReturnToRoutines={() => {
+                            onEditRoutine={() => flow.startEditingActiveRoutine()}                            onReturnToRoutines={() => {
                                 flow.setEditIntent(false);
                                 flow.setActiveRoutine(null);
                                 flow.returnToRoutines();
@@ -416,11 +459,15 @@ export default function Log(){
                     {flow.step === "routines" && (
                         <RoutinesStep
                             routines={routines}
-                            allExerciseNames={allExerciseNames}
-                            editRoutineId={flow.editIntent ? flow.activeRoutine?.id : undefined}
-                            onStartRoutine={(routine) => {
-                                flow.startRoutine(routine);
+                            exerciseCatalog={exerciseCatalog}
+                            editRoutineId={flow.editIntent ? flow.activeRoutine?.id : null}
+                            onReorderRoutines={(orderedRoutineIds) => {
+                                const formData = new FormData();
+                                formData.set("intent", "reorderRoutines");
+                                orderedRoutineIds.forEach((id) => formData.append("orderedIds", id));
+                                fetcher.submit(formData, {method: "post"});
                             }}
+                            onStartRoutine={(routine) => flow.startRoutine(routine)}
                             onCreateRoutine={(name, exerciseNames) => {
                                 const formData = new FormData();
 
@@ -441,12 +488,45 @@ export default function Log(){
                                 exerciseNames.forEach((n) => formData.append("exerciseNames", n));
                                 fetcher.submit(formData, {method: "post"});
 
-                                flow.setActiveRoutine({id: routineId, name, exerciseNames});
+                                flow.setActiveRoutine({
+                                    id: routineId,
+                                    name,
+                                    exerciseNames,
+                                    order: flow.activeRoutine?.order ?? 0,
+                                });
+
                                 flow.setEditIntent(false);
-                                flow.returnToRoutineHub();
+
+                                if (flow.editReturnStep === "routineHub") {
+                                    flow.returnToRoutineHub();
+                                } else {
+                                    flow.setStep("routines");
+                                }
                             }}
                             onDeleteRoutine={(routineId) => {
-                                // ...unchanged
+                                const formData = new FormData();
+
+                                formData.set("intent", "deleteRoutine");
+                                formData.set("routineId", routineId);
+
+                                fetcher.submit(formData, {method: "post"});
+                            }}
+                            onCreateExercise={(name, category, muscle, loggingTypes) => {
+                                const formData = new FormData();
+
+                                formData.set("intent", "createExercise");
+                                formData.set("name", name);
+                                formData.set("category", category);
+
+                                if (muscle) {
+                                    formData.set("muscle", muscle);
+                                }
+
+                                loggingTypes.forEach((type) => {
+                                    formData.append("loggingTypes", type);
+                                });
+
+                                fetcher.submit(formData, {method: "post"});
                             }}
                             onBack={() => {
                                 flow.setEditIntent(false);
@@ -475,17 +555,15 @@ export default function Log(){
                             }}
                             onCreateExercise={(name, loggingTypes) => {
                                 if (!flow.category) return
-                                const newExercise: Exercise = {
-                                    id: crypto.randomUUID(),
-                                    name,
-                                    category: flow.category,
-                                    muscle: flow.muscle ?? undefined,
-                                    loggingType: flow.category === "cardio" ? undefined : loggingTypes[0],
-                                    allowedLoggingTypes: flow.category === "cardio" ? undefined : loggingTypes,
-                                }
-                                setExercises((prev) => [...prev, newExercise])
-                                setSelectedExercise(newExercise)
-                                flow.next()
+
+                                const formData = new FormData();
+                                formData.set("intent", "createExercise");
+                                formData.set("name", name);
+                                formData.set("category", flow.category);
+                                if (flow.muscle) formData.set("muscle", flow.muscle);
+                                loggingTypes.forEach((t) => formData.append("loggingTypes", t));
+
+                                fetcher.submit(formData, {method: "post"});
                             }}
                             onBack={flow.back}
                             onHome={
@@ -610,5 +688,4 @@ export default function Log(){
             </div>
             <NavBar/>
         </div>
-    )
-}
+    )}
