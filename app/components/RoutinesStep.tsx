@@ -27,8 +27,9 @@ type CatalogEntry = {
 type Props = {
     routines: RoutineEntry[];
     exerciseCatalog: CatalogEntry[];
-    editRoutineId?: string | null;
+    initialEditingRoutine?: RoutineEntry | null;
     onStartRoutine: (routine: RoutineEntry) => void;
+    onStartEditing: (routine: RoutineEntry) => void;
     onCreateRoutine: (name: string, exerciseNames: string[]) => void;
     onUpdateRoutine: (routineId: string, name: string, exerciseNames: string[]) => void;
     onDeleteRoutine: (routineId: string) => void;
@@ -40,6 +41,7 @@ type Props = {
         muscle: Muscle | undefined,
         loggingTypes: LoggingType[]
     ) => void;
+    onCancelEdit: () => void;
 }
 
 function SortableRoutineRow({
@@ -82,7 +84,10 @@ function SortableRoutineRow({
                 <p className="text-xs text-neutral-400">{routine.exerciseNames.length} exercises</p>
             </button>
             <button
-                onClick={() => onStartEditing(routine)}
+                onClick={() => {
+                    console.log("ROW EDIT BUTTON", routine.name);
+                    onStartEditing(routine);
+                }}
                 className="text-blue-400 text-xs px-2"
             >
                 Edit
@@ -97,29 +102,17 @@ function SortableRoutineRow({
     );
 }
 
-export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines, editRoutineId, onStartRoutine, onCreateExercise, onCreateRoutine, onUpdateRoutine, onDeleteRoutine, onBack}: Props) {
-    const [editingRoutine, setEditingRoutine] = useState<RoutineEntry | null>(() => {
-        if (editRoutineId) {
-            return routines.find((r) => r.id === editRoutineId) ?? null;
-        }
-        return null;
-    });
+export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
+                                 onStartRoutine, onStartEditing, onCreateExercise, onCreateRoutine,
+                                 onUpdateRoutine, onDeleteRoutine, onBack, onCancelEdit, initialEditingRoutine}: Props) {
+    const [editingRoutine, setEditingRoutine] = useState<RoutineEntry | null>(initialEditingRoutine ?? null);
     const [isCreating, setIsCreating] = useState(false);
     const [isCreatingExercise, setIsCreatingExercise] = useState(false);
-    const [name, setName] = useState(editingRoutine?.name ?? "");
-    const [selectedExercises, setSelectedExercises] = useState<string[]>(editingRoutine?.exerciseNames ?? []);
+    const [name, setName] = useState(initialEditingRoutine?.name ?? "");
+    const [selectedExercises, setSelectedExercises] = useState<string[]>(initialEditingRoutine?.exerciseNames ?? []);
     const [query, setQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<"all" | Category>("all");
     const [localRoutines, setLocalRoutines] = useState(routines);
-
-
-
-    function startEditing(routine: RoutineEntry) {
-        setEditingRoutine(routine);
-        setName(routine.name);
-        setSelectedExercises(routine.exerciseNames);
-        setQuery("");
-    }
 
     function startCreating() {
         setIsCreating(true);
@@ -135,6 +128,17 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines, edit
                 ? prev.filter((n) => n !== exerciseName)
                 : [...prev, exerciseName]
         );
+    }
+
+    function startEditing(routine: RoutineEntry) {
+        console.log("START EDITING", routine.name);
+
+        setEditingRoutine(routine);
+        setName(routine.name);
+        setSelectedExercises(routine.exerciseNames);
+        setQuery("");
+
+        onStartEditing(routine);
     }
 
     useEffect(() => {
@@ -176,11 +180,17 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines, edit
     }
 
     function handleCancel() {
+        const wasEditing = editingRoutine !== null;
+
         setIsCreating(false);
         setEditingRoutine(null);
         setName("");
         setSelectedExercises([]);
         setQuery("");
+
+        if (wasEditing) {
+            onCancelEdit();
+        }
     }
 
 

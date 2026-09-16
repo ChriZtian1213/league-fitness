@@ -238,7 +238,6 @@ export default function Log(){
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
     const [showCalendar, setShowCalendar] = useState(date !== clientToday);
-    const [pendingReturnToHub, setPendingReturnToHub] = useState(false);
     const [workouts, setWorkouts] = useState<WorkoutEntry[]>(initialWorkouts)
     const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
     const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set())
@@ -274,18 +273,6 @@ export default function Log(){
         }
     }, [clientToday]);
 
-    useEffect(() => {
-        if (flow.activeRoutine) {
-            const updated = routines.find((r) => r.id === flow.activeRoutine!.id);
-            if (updated) {
-                flow.setActiveRoutine(updated);
-                if (pendingReturnToHub) {
-                    flow.returnToRoutineHub();
-                    setPendingReturnToHub(false);
-                }
-            }
-        }
-    }, [routines]);
 
     useEffect(() => {
         if (fetcher.data?.error && fetcher.data?.tempId) {
@@ -440,7 +427,7 @@ export default function Log(){
                     })()}
 
 
-                    {flow.step === "routineHub" && flow.activeRoutine && routines.some((r) => r.id === flow.activeRoutine!.id) && (
+                    {flow.step === "routineHub" && flow.activeRoutine && (
                         <RoutineHub
                             routine={flow.activeRoutine}
                             workouts={workouts}
@@ -452,20 +439,19 @@ export default function Log(){
                                     flow.setStep("log");
                                 }
                             }}
-                            onEditRoutine={() => flow.startEditingActiveRoutine()}                            onReturnToRoutines={() => {
-                                flow.setEditIntent(false);
-                                flow.setActiveRoutine(null);
-                                flow.returnToRoutines();
-                            }}
+                            onEditRoutine={() => flow.startEditingActiveRoutine()}
+                            onReturnToRoutines={() => flow.returnToRoutines()}
                             onHome={() => flow.exitRoutine()}
                         />
                     )}
 
                     {flow.step === "routines" && (
                         <RoutinesStep
+                            initialEditingRoutine={
+                                flow.editIntent ? flow.activeRoutine : null
+                            }
                             routines={routines}
                             exerciseCatalog={exerciseCatalog}
-                            editRoutineId={flow.editIntent ? flow.activeRoutine?.id : null}
                             onReorderRoutines={(orderedRoutineIds) => {
                                 const formData = new FormData();
                                 formData.set("intent", "reorderRoutines");
@@ -475,6 +461,9 @@ export default function Log(){
                                 fetcher.submit(formData, {method: "post"});
                             }}
                             onStartRoutine={(routine) => flow.startRoutine(routine)}
+                            onStartEditing={(routine) =>
+                                flow.startEditingFromRoutinesList(routine)
+                            }
                             onCreateRoutine={(name, exerciseNames) => {
                                 const formData = new FormData();
 
@@ -486,6 +475,15 @@ export default function Log(){
                                 });
 
                                 fetcher.submit(formData, {method: "post"});
+                            }}
+                            onCancelEdit={() => {
+                                flow.setEditIntent(false);
+
+                                if (flow.editReturnStep === "routineHub") {
+                                    flow.returnToRoutineHub();
+                                } else {
+                                    flow.returnToRoutines();
+                                }
                             }}
                             onUpdateRoutine={(routineId, name, exerciseNames) => {
                                 const formData = new FormData();

@@ -41,9 +41,11 @@ export function useWorkoutFlow(){
         }
     }
 
-   function returnToRoutines(){
+    function returnToRoutines() {
+        setActiveRoutine(null);
+        setEditIntent(false);
         setStep("routines");
-   }
+    }
 
     function back() {
         if (step === "exercise") {
