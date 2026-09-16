@@ -101,10 +101,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         if (exercise) {
             const isStairMaster = exercise === "Stair Master";
             cardioMetric = isStairMaster
-                ? "steps"
-                : requestedCardioMetric === "speed"
-                    ? "speed"
-                    : "distance";
+                ? (requestedCardioMetric === "speed" ? "speed" : "steps")
+                : (requestedCardioMetric === "speed" ? "speed" : "distance");
             leaderboard = await getCardioLeaderboard(period, scope, userId, exercise, cardioMetric);
         } else {
             cardioOverview = await getCardioExerciseOverview(period, scope, userId);
@@ -349,12 +347,19 @@ export default function Leaderboard() {
                         </Link>
                     </div>
 
-                    {!isStairMaster && (
-                        <div className="flex border border-neutral-500 rounded-md overflow-hidden mb-2 text-sm">
-                            <Link to={buildLink(current, {cardioMetric: "distance"})} className={`px-3 py-1 ${cardioMetric === "distance" ? "bg-neutral-500" : ""}`}>Distance</Link>
-                            <Link to={buildLink(current, {cardioMetric: "speed"})} className={`px-3 py-1 ${cardioMetric === "speed" ? "bg-neutral-500" : ""}`}>Speed</Link>
-                        </div>
-                    )}
+                    <div className="flex border border-neutral-500 rounded-md overflow-hidden mb-2 text-sm">
+                        {isStairMaster ? (
+                            <>
+                                <Link to={buildLink(current, {cardioMetric: "steps"})} className={`px-3 py-1 ${cardioMetric === "steps" ? "bg-neutral-500" : ""}`}>Steps</Link>
+                                <Link to={buildLink(current, {cardioMetric: "speed"})} className={`px-3 py-1 ${cardioMetric === "speed" ? "bg-neutral-500" : ""}`}>Speed</Link>
+                            </>
+                        ) : (
+                            <>
+                                <Link to={buildLink(current, {cardioMetric: "distance"})} className={`px-3 py-1 ${cardioMetric === "distance" ? "bg-neutral-500" : ""}`}>Distance</Link>
+                                <Link to={buildLink(current, {cardioMetric: "speed"})} className={`px-3 py-1 ${cardioMetric === "speed" ? "bg-neutral-500" : ""}`}>Speed</Link>
+                            </>
+                        )}
+                    </div>
 
                     {leaderboard.length === 0 && <p>No logs for this exercise yet.</p>}
                     {leaderboard.map((entry: any, index: number) => (

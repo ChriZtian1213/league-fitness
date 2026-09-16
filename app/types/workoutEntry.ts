@@ -8,11 +8,12 @@ export type WorkoutEntry = {
     muscle?: Muscle
     loggingType?: LoggingType
     createdAt: Date
-    steps?: number
 
     weight?: number
     reps?: number
 
     distance?: number
     time?: string
+    steps?: number
+    floors?: number
 }

@@ -92,6 +92,12 @@ export async function action({request}: Route.ActionArgs){
 }
 
 function formatLine(w: WorkoutEntry) {
+    if (w.loggingType === "timed") {
+        return `${w.time}`;
+    }
+    if (w.exercise === "Stair Master" && w.steps != null) {
+        return `${w.steps} steps in ${w.time}`;
+    }
     if (w.loggingType === "bodyweight") {
         return w.weight ? `${w.weight} lbs × ${w.reps} reps` : `${w.reps} reps`;
     }

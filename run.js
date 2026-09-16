@@ -1,23 +1,14 @@
 import { MongoClient } from "mongodb";
+import { HARDCODED_EXERCISES } from "./app/data/exercises.ts"; // adjust path if needed
 
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
 const db = client.db("LeagueFitness");
 
-const r1 = await db.collection("workouts").updateMany(
-    { exercise: "Rope Face Pulls" },
-    { $set: { exercise: "Face Pulls" } }
-);
-const r2 = await db.collection("workouts").updateMany(
-    { exercise: "Cable Triceps Pushdown" },
-    { $set: { exercise: "Triceps Pushdown" } }
-);
-const r3 = await db.collection("workouts").updateMany(
-    { exercise: "Cable Triceps Overhead" },
-    { $set: { exercise: "Triceps Overhead" } }
-)
+const dbNames = await db.collection("workouts").distinct("exercise");
+const hardcodedNames = new Set(HARDCODED_EXERCISES.map((e) => e.name));
 
-console.log("Face Pulls updated:", r1.modifiedCount);
-console.log("Triceps Pushdown updated:", r2.modifiedCount);
+const unmatched = dbNames.filter((name) => !hardcodedNames.has(name));
+console.log("Database exercises NOT matching any hardcoded name:", unmatched);
 
 await client.close();

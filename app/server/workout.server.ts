@@ -56,37 +56,44 @@ export async function getCardioExerciseOverview(
     scope: LeaderboardScope,
     userId: string
 ): Promise<CardioOverviewEntry[]> {
+    const CARDIO_PRIORITY = ["Run", "Stair Master", "Walk"];
+
+    function cardioSortKey(exerciseName: string): number {
+        const index = CARDIO_PRIORITY.indexOf(exerciseName);
+        return index === -1 ? CARDIO_PRIORITY.length : index;
+    }
+
     const db = await connectDB();
 
-    const match: Record<string, any> = { category: "cardio" };
+    const match: Record<string, any> = {category: "cardio"};
 
     if (period !== "all") {
         const since = new Date();
         if (period === "week") since.setDate(since.getDate() - 7);
         if (period === "month") since.setMonth(since.getMonth() - 1);
-        match.createdAt = { $gte: since };
+        match.createdAt = {$gte: since};
     }
     if (scope === "following") {
         const followedIds = await getFollowedObjectIds(userId);
-        match.userId = { $in: [...followedIds, new ObjectId(userId)] };
+        match.userId = {$in: [...followedIds, new ObjectId(userId)]};
     }
     if (scope === "mutual") {
         const mutualIds = await getMutualFollowObjectIds(userId);
-        match.userId = { $in: [...mutualIds, new ObjectId(userId)] };
+        match.userId = {$in: [...mutualIds, new ObjectId(userId)]};
     }
 
     const docs = await db.collection("workouts").find(match).toArray();
 
     const verifiedUsers = await db
         .collection("users")
-        .find({ emailVerified: true })
-        .project({ displayName: 1 })
+        .find({emailVerified: true})
+        .project({displayName: 1})
         .toArray();
     const verifiedMap = new Map(
         (verifiedUsers as any[]).map((u) => [u._id.toString(), u.displayName])
     );
 
-    const bestByExercise = new Map<string, {value: number; displayValue: string; userId: ObjectId}>();
+    const bestByExercise = new Map<string, { value: number; displayValue: string; userId: ObjectId }>();
 
     for (const doc of docs as any[]) {
         if (!verifiedMap.has(doc.userId.toString())) continue;
@@ -111,7 +118,11 @@ export async function getCardioExerciseOverview(
             displayName: verifiedMap.get(data.userId.toString()) ?? "Unknown",
             userId: data.userId.toString(),
         }))
-        .sort((a, b) => a.exercise.localeCompare(b.exercise));
+        .sort((a, b) => {
+            const priorityDiff = cardioSortKey(a.exercise) - cardioSortKey(b.exercise);
+            if (priorityDiff !== 0) return priorityDiff;
+            return a.exercise.localeCompare(b.exercise);
+        });
 }
 
 export type CardioMetric = "distance" | "speed" | "steps";
@@ -187,12 +198,21 @@ export async function getCardioLeaderboard(
         } else if (metric === "distance" && doc.distance != null) {
             value = doc.distance;
             displayValue = `${doc.distance} mi`;
-        } else if (metric === "speed" && doc.distance != null && doc.time) {
-            const minutes = parseTimeToSeconds(doc.time) / 60;
-            if (minutes > 0) {
-                const mph = doc.distance / (minutes / 60);
-                value = mph;
-                displayValue = `${mph.toFixed(1)} mph`;
+        } else if (metric === "speed") {
+            if (doc.exercise === "Stair Master" && doc.steps != null && doc.time) {
+                const minutes = parseTimeToSeconds(doc.time) / 60;
+                if (minutes > 0) {
+                    const stepsPerMin = doc.steps / minutes;
+                    value = stepsPerMin;
+                    displayValue = `${stepsPerMin.toFixed(1)} steps/min`;
+                }
+            } else if (doc.distance != null && doc.time) {
+                const minutes = parseTimeToSeconds(doc.time) / 60;
+                if (minutes > 0) {
+                    const mph = doc.distance / (minutes / 60);
+                    value = mph;
+                    displayValue = `${mph.toFixed(1)} mph`;
+                }
             }
         }
 

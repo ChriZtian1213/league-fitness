@@ -10,7 +10,21 @@ type Props = {
     onHome: () => void
 }
 
+const LOGGING_TYPE_ORDER: LoggingType[] = ["dumbbell", "standard", "starting-weight", "bodyweight"];
+
+function sortLoggingTypes(types: LoggingType[]): LoggingType[] {
+    return [...types].sort(
+        (a, b) => LOGGING_TYPE_ORDER.indexOf(a) - LOGGING_TYPE_ORDER.indexOf(b)
+    );
+}
+
 function formatBest(best: WorkoutEntry): string {
+    if (best.loggingType === "timed") {
+        return `${best.time}`;
+    }
+    if (best.exercise === "Stair Master" && best.steps != null) {
+        return `${best.steps} steps in ${best.time}`;
+    }
     if (best.loggingType === "bodyweight") {
         return best.weight ? `${best.weight} lbs × ${best.reps} reps` : `${best.reps} reps`;
     }
@@ -24,7 +38,14 @@ function formatBest(best: WorkoutEntry): string {
 }
 
 export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Props) {
+    const STEPS_PER_FLOOR = 16;
+
+    const [floors, setFloors] = useState("");
+    const [stairTime, setStairTime] = useState("");
+    const [duration, setDuration] = useState(""); // for "timed" exercises like Plank
+
     const isStairMaster = exercise.name === "Stair Master";
+    const isTimed = exercise.loggingType === "timed";
 
     const [selectedLoggingType, setSelectedLoggingType] =
         useState<LoggingType>(exercise.loggingType ?? "standard");
@@ -67,6 +88,26 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
         0
     );
 
+    function handleFloorsChange(value: string) {
+        setFloors(value);
+        const floorsNum = Number(value);
+        if (value && !isNaN(floorsNum)) {
+            setSteps(String(Math.round(floorsNum * STEPS_PER_FLOOR)));
+        } else {
+            setSteps("");
+        }
+    }
+
+    function handleStepsChange(value: string) {
+        setSteps(value);
+        const stepsNum = Number(value);
+        if (value && !isNaN(stepsNum)) {
+            setFloors(String(Math.round(stepsNum / STEPS_PER_FLOOR)));
+        } else {
+            setFloors("");
+        }
+    }
+
     const weightInputRef = useRef<HTMLInputElement>(null);
     const repsInputRef = useRef<HTMLInputElement>(null);
     const distanceInputRef = useRef<HTMLInputElement>(null);
@@ -90,12 +131,17 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
     function handleSubmit(): boolean {
         if (isStairMaster) {
             const stepsNumber = Number(steps);
-            if (!steps) {
-                alert("Please enter steps");
+            const normalizedTime = normalizeTime(stairTime);
+            if (!steps || !stairTime) {
+                alert("Please fill in floors/steps and time");
                 return false;
             }
             if (stepsNumber <= 0) {
                 alert("Steps must be greater than 0");
+                return false;
+            }
+            if (!normalizedTime) {
+                alert("Time must be mm:ss or h:mm:ss");
                 return false;
             }
 
@@ -105,11 +151,41 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                 category: exercise.category,
                 muscle: exercise.muscle,
                 steps: stepsNumber,
+                floors: Number(floors) || undefined,
+                time: normalizedTime,
                 createdAt: new Date()
             }
 
             onSubmit(workout);
             setSteps("");
+            setFloors("");
+            setStairTime("");
+            return true;
+        }
+
+        if (isTimed) {
+            const normalizedDuration = normalizeTime(duration);
+            if (!duration) {
+                alert("Please enter a duration");
+                return false;
+            }
+            if (!normalizedDuration) {
+                alert("Time must be mm:ss or h:mm:ss");
+                return false;
+            }
+
+            const workout: WorkoutEntry = {
+                id: crypto.randomUUID(),
+                exercise: exercise.name,
+                category: exercise.category,
+                muscle: exercise.muscle,
+                time: normalizedDuration,
+                loggingType: "timed",
+                createdAt: new Date()
+            }
+
+            onSubmit(workout);
+            setDuration("");
             return true;
         }
 
@@ -291,39 +367,96 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
             )}
 
             {exercise.allowedLoggingTypes && exercise.allowedLoggingTypes.length > 1 && (
-                <div className="flex justify-center gap-2 mb-4">
-                    {exercise.allowedLoggingTypes.map((type) => (
-                        <button
-                            key={type}
-                            type="button"
-                            onClick={() => {
-                                setSelectedLoggingType(type);
-                                setUsePlateCalc(type === "starting-weight");
-                            }}
-                            className={`border px-3 py-2 text-sm ${
-                                selectedLoggingType === type
-                                    ? "bg-neutral-900 font-bold"
-                                    : "hover:bg-neutral-600"
-                            }`}
-                        >
-                            {type === "standard" && "Standard"}
-                            {type === "dumbbell" && "Dumbbell"}
-                            {type === "starting-weight" && "Plate Calculator"}
-                            {type === "bodyweight" && "Bodyweight"}
-                        </button>
-                    ))}
+                <div className="flex justify-center mb-4">
+                    <div className="flex border border-neutral-500 rounded-md overflow-hidden text-sm">
+                        {sortLoggingTypes(exercise.allowedLoggingTypes).map((type) => (
+                            <button
+                                key={type}
+                                type="button"
+                                onClick={() => {
+                                    setSelectedLoggingType(type);
+                                    setUsePlateCalc(type === "starting-weight");
+                                }}
+                                className={`px-3 py-1.5 ${
+                                    selectedLoggingType === type ? "bg-neutral-500" : ""
+                                }`}
+                            >
+                                {type === "standard" && "Standard"}
+                                {type === "dumbbell" && "Dumbbell"}
+                                {type === "starting-weight" && "Plate Calculator"}
+                                {type === "bodyweight" && "Bodyweight"}
+                                {type === "timed" && "Timed"}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
 
             {isStairMaster ? (
-                <div className="flex gap-2">
+                <div className="flex flex-col items-center gap-2">
+                    <div className="flex gap-2">
+                        <div className="flex flex-col items-center">
+                            <label className="text-xs text-neutral-400">Floors</label>
+                            <input
+                                type="number"
+                                inputMode="numeric"
+                                value={floors}
+                                onChange={(e) => handleFloorsChange(e.target.value)}
+                                className={inputClass}
+                            />
+                        </div>
+                        <p className="font-bold pt-6">=</p>
+                        <div className="flex flex-col items-center">
+                            <label className="text-xs text-neutral-400">Steps</label>
+                            <input
+                                type="number"
+                                inputMode="numeric"
+                                value={steps}
+                                onChange={(e) => handleStepsChange(e.target.value)}
+                                className={inputClass}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <label className="text-xs text-neutral-400">Time</label>
+                        <input
+                            ref={timeInputRef}
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="h:mm:ss"
+                            value={stairTime}
+                            onChange={(e) => {
+                                const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                let formatted = digitsOnly;
+                                if (digitsOnly.length > 4) {
+                                    formatted = `${digitsOnly.slice(0, digitsOnly.length - 4)}:${digitsOnly.slice(-4, -2)}:${digitsOnly.slice(-2)}`;
+                                } else if (digitsOnly.length > 2) {
+                                    formatted = `${digitsOnly.slice(0, digitsOnly.length - 2)}:${digitsOnly.slice(-2)}`;
+                                }
+                                setStairTime(formatted);
+                            }}
+                            className={inputClass}
+                        />
+                    </div>
+                </div>
+            ) : isTimed ? (
+                <div className="flex flex-col items-center">
+                    <label className="text-xs text-neutral-400">Duration</label>
                     <input
-                        ref={stepsInputRef}
-                        type="number"
-                        placeholder="Steps"
-                        value={steps}
-                        onChange={(e) => setSteps(e.target.value)}
-                        onKeyDown={handleStepsKeyDown}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="h:mm:ss"
+                        value={duration}
+                        onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 6);
+                            let formatted = digitsOnly;
+                            if (digitsOnly.length > 4) {
+                                formatted = `${digitsOnly.slice(0, digitsOnly.length - 4)}:${digitsOnly.slice(-4, -2)}:${digitsOnly.slice(-2)}`;
+                            } else if (digitsOnly.length > 2) {
+                                formatted = `${digitsOnly.slice(0, digitsOnly.length - 2)}:${digitsOnly.slice(-2)}`;
+                            }
+                            setDuration(formatted);
+                        }}
                         className={inputClass}
                     />
                 </div>
@@ -344,7 +477,7 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
                         ref={timeInputRef}
                         inputMode="numeric"
                         type="text"
-                        placeholder="Time (h:mm:ss)"
+                        placeholder="Time (mm:ss)"
                         value={time}
                         onChange={handleTimeChange}
                         onKeyDown={handleTimeKeyDown}

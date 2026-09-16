@@ -16,3 +16,4 @@ export type LoggingType =
     | "dumbbell"
     | "starting-weight"
     | "bodyweight"
+    | "timed"

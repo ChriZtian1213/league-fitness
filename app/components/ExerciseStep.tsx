@@ -19,6 +19,7 @@ type Props = {
 const muscleLabels: Record<Muscle, string> = {
     chest: "Chest", back: "Back", triceps: "Triceps", shoulders: "Shoulders", biceps: "Biceps",
     glutes: "Glutes", hamstrings: "Hamstrings", quads: "Quads", calves: "Calves",
+    abs: "Abs",
 };
 
 const categoryLabels: Record<Category, string> = {
