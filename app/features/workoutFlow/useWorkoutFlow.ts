@@ -27,6 +27,10 @@ export function useWorkoutFlow(){
         }
     }
 
+   function returnToRoutines(){
+        setStep("routines");
+   }
+
     function back() {
         if (step === "exercise") {
             if (category === "cardio") {
@@ -73,6 +77,6 @@ export function useWorkoutFlow(){
         step, category, muscle, setCategory,
         setMuscle, next, back, setStep,
         activeRoutine, setActiveRoutine, startRoutine, exitRoutine, returnToRoutineHub,
-        editIntent, setEditIntent, startEditingActiveRoutine,
+        editIntent, setEditIntent, startEditingActiveRoutine, returnToRoutines,
     }
 }
