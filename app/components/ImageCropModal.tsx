@@ -51,7 +51,7 @@ async function getCroppedImage(imageSrc: string, cropArea: Area, maxDimension: n
         canvas.height
     );
 
-    return canvas.toDataURL("image/jpeg", 0.75);
+    return canvas.toDataURL("image/jpeg", 0.65);
 }
 
 export function ImageCropModal({imageSrc, shapeOptions, initialShapeKey, onCancel, onCropDone, maxDimension}: Props) {
@@ -77,7 +77,7 @@ export function ImageCropModal({imageSrc, shapeOptions, initialShapeKey, onCance
         if (!croppedArea) return;
         setIsSaving(true);
         try {
-            const dataUrl = await getCroppedImage(imageSrc, croppedArea, maxDimension ?? 800);
+            const dataUrl = await getCroppedImage(imageSrc, croppedArea, maxDimension ?? 600);
             onCropDone(dataUrl, shapeKey);
         } finally {
             setIsSaving(false);
