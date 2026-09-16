@@ -399,7 +399,16 @@ export default function Log(){
                                 flow.startRoutine(routine);
                             }}
                             onCreateRoutine={(name, exerciseNames) => {
-                                // ...unchanged
+                                const formData = new FormData();
+
+                                formData.set("intent", "createRoutine");
+                                formData.set("name", name);
+
+                                exerciseNames.forEach((exerciseName) => {
+                                    formData.append("exerciseNames", exerciseName);
+                                });
+
+                                fetcher.submit(formData, {method: "post"});
                             }}
                             onUpdateRoutine={(routineId, name, exerciseNames) => {
                                 const formData = new FormData();
