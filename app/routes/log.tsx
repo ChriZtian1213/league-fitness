@@ -48,7 +48,12 @@ export async function loader({request}: Route.LoaderArgs){
 
     const url = new URL(request.url);
     const now = new Date();
-    const todayDateStr = toDateStr(now);
+    const todayDateStr = new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(now);
     const year = Number(url.searchParams.get("year")) || now.getFullYear();
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
     const date = url.searchParams.get("date") ?? todayDateStr;
@@ -233,7 +238,8 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 }
 
 export default function Log(){
-    const {workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames} = useLoaderData<typeof loader>();    const clientToday = useLocalToday(todayDateStr);
+    const {todayDateStr: serverTodayDateStr, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames} = useLoaderData<typeof loader>();
+    const clientToday = useLocalToday(todayDateStr);
     const navigate = useNavigate();
     const fetcher = useFetcher();
     const flow = useWorkoutFlow()
@@ -431,7 +437,7 @@ export default function Log(){
                         <RoutineHub
                             routine={flow.activeRoutine}
                             workouts={workouts}
-                            todayDateStr={todayDateStr}
+                            todayDateStr={clientToday}
                             onSelectExercise={(exerciseName) => {
                                 const ex = exercises.find((e) => e.name === exerciseName);
                                 if (ex) {
@@ -442,6 +448,19 @@ export default function Log(){
                             onEditRoutine={() => flow.startEditingActiveRoutine()}
                             onReturnToRoutines={() => flow.returnToRoutines()}
                             onHome={() => flow.exitRoutine()}
+                            onReorderExercises={(exerciseNames) => {
+                                const formData = new FormData();
+                                formData.set("intent", "updateRoutine");
+                                formData.set("routineId", flow.activeRoutine!.id);
+                                formData.set("name", flow.activeRoutine!.name);
+                                exerciseNames.forEach((n) => formData.append("exerciseNames", n));
+                                fetcher.submit(formData, {method: "post"});
+
+                                flow.setActiveRoutine({
+                                    ...flow.activeRoutine!,
+                                    exerciseNames,
+                                });
+                            }}
                         />
                     )}
 

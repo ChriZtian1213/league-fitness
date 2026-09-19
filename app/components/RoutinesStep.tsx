@@ -22,6 +22,7 @@ import {CreateExerciseForm} from "~/components/CreateExerciseForm";
 type CatalogEntry = {
     exercise: string;
     category: Category | null;
+    muscle: Muscle | null;
 };
 
 type Props = {
@@ -113,6 +114,41 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
     const [query, setQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<"all" | Category>("all");
     const [localRoutines, setLocalRoutines] = useState(routines);
+    const [muscleFilter, setMuscleFilter] = useState<"all" | Muscle>("all");
+    const [selectedMuscles, setSelectedMuscles] = useState<Set<Muscle>>(new Set());
+
+    const UPPER_MUSCLES: Muscle[] = ["chest", "back", "shoulders", "biceps", "triceps"];
+    const LOWER_MUSCLES: Muscle[] = ["quads", "hamstrings", "glutes", "calves"];
+    const CORE_MUSCLES: Muscle[] = ["abs"];
+
+    function toggleMuscle(muscle: Muscle) {
+        setSelectedMuscles((prev) => {
+            const next = new Set(prev);
+            if (next.has(muscle)) next.delete(muscle);
+            else next.add(muscle);
+            return next;
+        });
+    }
+
+    const musclesForCurrentCategory = Array.from(
+        new Set(
+            exerciseCatalog
+                .filter((c) => categoryFilter === "all" || c.category === categoryFilter)
+                .filter((c) => c.muscle)
+                .map((c) => c.muscle as Muscle)
+        )
+    ).sort();
+
+    function musclesForCategory(category: "all" | Category): Muscle[] {
+        if (category === "upper") return [...UPPER_MUSCLES, ...CORE_MUSCLES];
+        if (category === "lower") return [...LOWER_MUSCLES, ...CORE_MUSCLES];
+        if (category === "cardio") return [];
+        return [...UPPER_MUSCLES, ...LOWER_MUSCLES, ...CORE_MUSCLES]; // "all"
+    }
+
+    function muscleLabel(m: Muscle) {
+        return m.charAt(0).toUpperCase() + m.slice(1);
+    }
 
     function startCreating() {
         setIsCreating(true);
@@ -197,6 +233,7 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
 
     const filteredExercises = exerciseCatalog
         .filter((c) => categoryFilter === "all" || c.category === categoryFilter)
+        .filter((c) => selectedMuscles.size === 0 || (c.muscle && selectedMuscles.has(c.muscle)))
         .filter((c) => c.exercise.toLowerCase().includes(query.toLowerCase()))
         .map((c) => c.exercise)
         .sort((a, b) => {
@@ -250,7 +287,10 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
                         <button
                             key={c}
                             type="button"
-                            onClick={() => setCategoryFilter(c)}
+                            onClick={() => {
+                                setCategoryFilter(c);
+                                setSelectedMuscles(new Set());
+                            }}
                             className={`px-3 py-1.5 ${categoryFilter === c ? "bg-neutral-500" : ""}`}
                         >
                             {c === "all" ? "All" : c === "upper" ? "Upper" : c === "lower" ? "Lower" : "Cardio"}
@@ -258,14 +298,34 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
                     ))}
                 </div>
 
+                {categoryFilter !== "cardio" && musclesForCurrentCategory.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                        {musclesForCurrentCategory.map((m) => (
+                            <button
+                                key={m}
+                                type="button"
+                                onClick={() => toggleMuscle(m)}
+                                className={`px-3 py-1.5 border rounded-md text-sm ${
+                                    selectedMuscles.has(m)
+                                        ? "bg-neutral-500 border-neutral-400"
+                                        : "border-neutral-600"
+                                }`}
+                            >
+                                {m.charAt(0).toUpperCase() + m.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <button
                     type="button"
                     onClick={() => {
                         setCategoryFilter("all");
+                        setSelectedMuscles(new Set());
                         setQuery("");
                     }}
                     className={`text-xs text-neutral-400 underline ${
-                        categoryFilter === "all" && !query ? "invisible pointer-events-none" : ""
+                        categoryFilter === "all" && selectedMuscles.size === 0 && !query ? "invisible pointer-events-none" : ""
                     }`}
                 >
                     Clear filters
@@ -308,7 +368,10 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
                                 Found "{matchOutsideFilter.exercise}" in {matchOutsideFilter.category}.{" "}
                                 <button
                                     type="button"
-                                    onClick={() => setCategoryFilter("all")}
+                                    onClick={() => {
+                                        setCategoryFilter("all");
+                                        setMuscleFilter("all");
+                                    }}
                                     className="text-blue-400 underline"
                                 >
                                     Clear filter to see it
