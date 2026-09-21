@@ -102,8 +102,10 @@ export async function action({request, params}: Route.ActionArgs) {
         const displayName = formData.get("displayName");
         const bio = formData.get("bio");
         const croppedImage = formData.get("profilePicture");
+        const calendarPublic = formData.get("calendarPublic");
+        const leaderboardOptOut = formData.get("leaderboardOptOut");
 
-        const update: {displayName?: string; bio?: string; profilePicture?: string} = {};
+        const update: {displayName?: string; bio?: string; profilePicture?: string; calendarPublic?: boolean; leaderboardOptOut?: boolean} = {};
 
         if (typeof displayName === "string" && displayName.trim()) {
             update.displayName = displayName.trim();
@@ -114,6 +116,9 @@ export async function action({request, params}: Route.ActionArgs) {
         if (typeof croppedImage === "string" && croppedImage.startsWith("data:image")) {
             update.profilePicture = croppedImage;
         }
+
+        update.calendarPublic = calendarPublic === "on";
+        update.leaderboardOptOut = leaderboardOptOut === "on";
 
         await updateProfile(viewerId, update);
         return {ok: true};
@@ -332,6 +337,15 @@ export default function Profile() {
                             defaultChecked={user?.calendarPublic ?? true}
                         />
                         Make my workout calendar public
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm text-neutral-400">
+                        <input
+                            type="checkbox"
+                            name="leaderboardOptOut"
+                            defaultChecked={user?.leaderboardOptOut ?? false}
+                        />
+                        Hide me from the leaderboard
                     </label>
 
                     <button type="submit" className="border rounded-md px-4 py-2 font-bold bg-green-700">

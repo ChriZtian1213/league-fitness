@@ -15,6 +15,7 @@ export interface PublicUser {
     bio?: string;
     profilePicture?: string;
     calendarPublic: boolean;
+    leaderboardOptOut: boolean;
 }
 
 export interface UserSearchResult {
@@ -28,7 +29,7 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
     const db = await connectDB();
     const user = await db.collection("users").findOne(
         { _id: new ObjectId(userId) },
-        { projection: { displayName: 1, username: 1, email: 1, emailVerified: 1, bio: 1, calendarPublic: 1 } }
+        { projection: { displayName: 1, username: 1, email: 1, emailVerified: 1, bio: 1, calendarPublic: 1, leaderboardOptOut: 1 } }
     );
     if (!user) return null;
     return {
@@ -40,6 +41,7 @@ export async function getUserById(userId: string): Promise<PublicUser | null> {
         bio: user.bio,
         profilePicture: undefined,
         calendarPublic: user.calendarPublic ?? true,
+        leaderboardOptOut: user.leaderboardOptOut ?? false,
     };
 }
 
@@ -57,6 +59,7 @@ export interface UpdateProfileInput {
     bio?: string;
     profilePicture?: string;
     calendarPublic?: boolean;
+    leaderboardOptOut?: boolean;
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<void> {
@@ -71,6 +74,7 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
     if (data.bio !== undefined) update.bio = data.bio;
     if (data.profilePicture !== undefined) update.profilePicture = data.profilePicture;
     if (data.calendarPublic !== undefined) update.calendarPublic = data.calendarPublic;
+    if (data.leaderboardOptOut !== undefined) update.leaderboardOptOut = data.leaderboardOptOut;
 
     if (Object.keys(update).length === 0) return;
 

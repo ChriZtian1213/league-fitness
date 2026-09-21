@@ -87,9 +87,10 @@ export async function getCardioExerciseOverview(
 
     const verifiedUsers = await db
         .collection("users")
-        .find({emailVerified: true})
-        .project({displayName: 1})
+        .find({ emailVerified: true, leaderboardOptOut: { $ne: true } })
+        .project({ displayName: 1 })
         .toArray();
+
     const verifiedMap = new Map(
         (verifiedUsers as any[]).map((u) => [u._id.toString(), u.displayName])
     );
@@ -177,9 +178,10 @@ export async function getCardioLeaderboard(
 
     const verifiedUsers = await db
         .collection("users")
-        .find({ emailVerified: true })
+        .find({ emailVerified: true, leaderboardOptOut: { $ne: true } })
         .project({ displayName: 1 })
         .toArray();
+
     const verifiedMap = new Map(
         (verifiedUsers as any[]).map((u) => [u._id.toString(), u.displayName])
     );
@@ -307,7 +309,7 @@ export async function getLiftingExerciseOverview(
     // avoids the $lookup stage entirely, which was the confirmed bottleneck.
     const userIds = [...new Set(combined.map((r) => r.userId.toString()))].map((id) => new ObjectId(id));
     const rawUsers = userIds.length
-        ? await db.collection("users").find({ _id: { $in: userIds } }).project({ displayName: 1, emailVerified: 1 }).toArray()
+        ? await db.collection("users").find({ _id: { $in: userIds }, leaderboardOptOut: { $ne: true } }).project({ displayName: 1, emailVerified: 1 }).toArray()
         : [];
     const users = rawUsers as { _id: ObjectId; displayName: string; emailVerified?: boolean }[];
     const userMap = new Map(users.map((u) => [u._id.toString(), u]));
@@ -549,7 +551,7 @@ export async function getLeaderboard(
     // $lookup stage entirely — confirmed to be the actual bottleneck.
     const userIds = grouped.map((g: any) => g._id);
     const rawUsers = userIds.length
-        ? await db.collection("users").find({ _id: { $in: userIds } }).project({ displayName: 1, emailVerified: 1 }).toArray()
+        ? await db.collection("users").find({ _id: { $in: userIds }, leaderboardOptOut: { $ne: true } }).project({ displayName: 1, emailVerified: 1 }).toArray()
         : [];
     const users = rawUsers as { _id: ObjectId; displayName: string; emailVerified?: boolean }[];
     const userMap = new Map(users.map((u) => [u._id.toString(), u]));
