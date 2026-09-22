@@ -8,6 +8,8 @@ import {createUserSession, getUserId} from "~/server/session.server";
 import {sendVerificationEmail} from "~/server/email.server";
 import {redirect} from "react-router";
 
+// TODO: Add guest mode and limit functions.
+
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
