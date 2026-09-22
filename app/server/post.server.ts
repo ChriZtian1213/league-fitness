@@ -3,6 +3,7 @@ import { createNotification } from "~/server/notification.server";
 export type FeedScope = "following" | "global";
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
+import { uploadImage, deleteImage } from "~/server/blob.server";
 
 interface CommentDoc {
     id: string;
@@ -34,9 +35,12 @@ export interface CreatePostInput {
 
 export async function createPost(userId: string, data: CreatePostInput) {
     const db = await connectDB();
+
+    const imageUrl = await uploadImage(data.imageData, `posts/${userId}-${Date.now()}`);
+
     const result = await db.collection<PostDoc>("posts").insertOne({
         userId: new ObjectId(userId),
-        imageData: data.imageData,
+        imageData: imageUrl,
         caption: data.caption,
         createdAt: new Date(),
         likedBy: [],
@@ -313,11 +317,10 @@ export async function editComment(
     );
 }
 
-export async function deletePost(
-    userId: string,
-    postId: string
-) {
+export async function deletePost(userId: string, postId: string) {
     const db = await connectDB();
+
+    const post = await db.collection<PostDoc>("posts").findOne({ _id: new ObjectId(postId), userId: new ObjectId(userId) });
 
     const result = await db.collection<PostDoc>("posts").deleteOne({
         _id: new ObjectId(postId),
@@ -326,6 +329,10 @@ export async function deletePost(
 
     if (result.deletedCount === 0) {
         throw new Error("Post not found or not authorized");
+    }
+
+    if (post?.imageData) {
+        await deleteImage(post.imageData);
     }
 }
 

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 import crypto from "crypto";
 import { createNotification } from "~/server/notification.server";
+import { uploadImage, deleteImage } from "~/server/blob.server";
 
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60s
 
@@ -72,7 +73,18 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
         update.displayName = trimmed;
     }
     if (data.bio !== undefined) update.bio = data.bio;
-    if (data.profilePicture !== undefined) update.profilePicture = data.profilePicture;
+
+    if (data.profilePicture !== undefined) {
+        const oldUser = await db.collection("users").findOne({ _id: new ObjectId(userId) }, { projection: { profilePicture: 1 } });
+
+        const imageUrl = await uploadImage(data.profilePicture, `profiles/${userId}-${Date.now()}`);
+        update.profilePicture = imageUrl;
+
+        if (oldUser?.profilePicture) {
+            await deleteImage(oldUser.profilePicture);
+        }
+    }
+
     if (data.calendarPublic !== undefined) update.calendarPublic = data.calendarPublic;
     if (data.leaderboardOptOut !== undefined) update.leaderboardOptOut = data.leaderboardOptOut;
 
