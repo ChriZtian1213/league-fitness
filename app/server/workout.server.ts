@@ -26,6 +26,8 @@ export interface WorkoutInput {
     time?: string;
     steps?: number;
     loggingType?: LoggingType;
+    routineId?: string;
+    routineName?: string;
 }
 
 export interface StoredWorkout extends WorkoutInput {
@@ -401,6 +403,8 @@ export async function createWorkoutEntry(
         distance: data.distance,
         time: data.time,
         steps: data.steps,
+        routineId: data.routineId,
+        routineName: data.routineName,
         createdAt,
         loggingType: data.loggingType
     });
@@ -671,4 +675,35 @@ export async function getPublicWorkoutDates(
     }
 
     return getWorkoutDatesForUser(profileUserId, timezone);
+}
+
+export async function getWorkoutRoutineNamesByDate(userId: string, timezone: string = "UTC"): Promise<Record<string, string[]>> {
+    const db = await connectDB();
+
+    const cursorResults = await db
+        .collection("workouts")
+        .aggregate([
+            { $match: { userId: new ObjectId(userId), routineName: { $exists: true, $ne: null } } },
+            {
+                $group: {
+                    _id: {
+                        date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone } },
+                        routineName: "$routineName",
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: "$_id.date",
+                    routineNames: { $addToSet: "$_id.routineName" },
+                },
+            },
+        ])
+        .toArray();
+
+    const result: Record<string, string[]> = {};
+    for (const doc of cursorResults as any[]) {
+        result[doc._id] = doc.routineNames;
+    }
+    return result;
 }

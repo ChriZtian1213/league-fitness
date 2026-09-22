@@ -9,13 +9,14 @@ type Props = {
     today: string; // server's guess — used only until the client corrects it
     clearTo?: string;
     dayLinkBase?: string;
+    routineNamesByDate?: Record<string, string[]>;
 };
 
 function pad(n: number) {
     return String(n).padStart(2, "0");
 }
 
-export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, clearTo="/log", dayLinkBase}: Props) {
+export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, clearTo="/log", dayLinkBase, routineNamesByDate}: Props) {
     const clientToday = useLocalToday(today)
     const loggedSet = new Set(loggedDates);
 
@@ -92,7 +93,14 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, 
                             to={`${dayLinkBase}${dayLinkBase.includes("?") ? "&" : "?"}year=${year}&month=${month}&date=${dateStr}`}
                             className={cellClassName}
                         >
-                            {day}
+                            <div className="flex flex-col items-center justify-center w-full h-full">
+                                <span className="text-xs">{day}</span>
+                                {routineNamesByDate?.[dateStr] && (
+                                    <span className="text-[9px] leading-none truncate max-w-full px-0.5">
+                {routineNamesByDate[dateStr].join(", ")}
+            </span>
+                                )}
+                            </div>
                         </Link>
                     );
                 })}

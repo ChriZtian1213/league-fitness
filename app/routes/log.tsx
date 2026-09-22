@@ -11,7 +11,15 @@ import {LogStep} from "~/components/LogStep";
 import {NavBar} from "~/components/NavBar";
 import {WorkoutCalendar} from "~/components/WorkoutCalendar";
 import { useFetcher, useLoaderData} from "react-router";
-import {createWorkoutEntry, getWorkoutsForUser, deleteWorkoutEntry, getExerciseCatalog, getWorkoutDatesForUser, getAllExerciseNames} from "~/server/workout.server";
+import {
+    createWorkoutEntry,
+    getWorkoutsForUser,
+    deleteWorkoutEntry,
+    getExerciseCatalog,
+    getWorkoutDatesForUser,
+    getAllExerciseNames,
+    getWorkoutRoutineNamesByDate
+} from "~/server/workout.server";
 import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
@@ -31,13 +39,13 @@ function toDateStr(date: Date) {
 
 export async function loader({request}: Route.LoaderArgs){
     const userId = await requireUserId(request);
-
     const cookieHeader = request.headers.get("Cookie") ?? "";
     const timezoneMatch = cookieHeader.match(/(?:^|;\s*)timezone=([^;]*)/);
-
     const timezone = timezoneMatch
         ? decodeURIComponent(timezoneMatch[1])
         : "UTC";
+
+    const routineNamesByDate = await getWorkoutRoutineNamesByDate(userId, timezone);
 
     const user = await getUserById(userId);
     const workouts = await getWorkoutsForUser(userId);
@@ -68,7 +76,8 @@ export async function loader({request}: Route.LoaderArgs){
         date,
         todayDateStr,
         routines,
-        allExerciseNames
+        allExerciseNames,
+        routineNamesByDate,
     };
 }
 
@@ -177,6 +186,9 @@ export async function action({request}: Route.ActionArgs){
         return {error: "Missing category."}
     }
 
+    const routineId = formData.get("routineId");
+    const routineName = formData.get("routineName");
+
     const workout = await createWorkoutEntry(userId, {
         exercise,
         category: category as any,
@@ -186,9 +198,9 @@ export async function action({request}: Route.ActionArgs){
         distance: typeof distance === "string" && distance ? Number(distance) : undefined,
         time: typeof time === "string" && time ? time : undefined,
         steps: typeof steps === "string" && steps ? Number(steps) : undefined,
-        loggingType: typeof loggingType === "string"
-            ? (loggingType as LoggingType)
-            : undefined,
+        loggingType: typeof loggingType === "string" ? (loggingType as LoggingType) : undefined,
+        routineId: typeof routineId === "string" ? routineId : undefined,
+        routineName: typeof routineName === "string" ? routineName : undefined,
     });
 
     return {ok: true, workout, tempId: typeof tempId === "string" ? tempId : undefined};
@@ -238,7 +250,7 @@ function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
 }
 
 export default function Log(){
-    const {todayDateStr: serverTodayDateStr, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames} = useLoaderData<typeof loader>();
+    const {todayDateStr: serverTodayDateStr, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames, routineNamesByDate} = useLoaderData<typeof loader>();
     const clientToday = useLocalToday(todayDateStr);
     const navigate = useNavigate();
     const fetcher = useFetcher();
@@ -295,21 +307,25 @@ export default function Log(){
     }, [fetcher.data]);
 
 
-
-
     function addWorkout(workout: WorkoutEntry) {
-        setWorkouts((prev) => [workout, ...prev])
+        const taggedWorkout: WorkoutEntry = flow.activeRoutine
+            ? { ...workout, routineId: flow.activeRoutine.id, routineName: flow.activeRoutine.name }
+            : workout;
+
+        setWorkouts((prev) => [taggedWorkout, ...prev])
         const formData = new FormData();
-        formData.set("exercise", workout.exercise);
-        formData.set("category", workout.category);
-        if (workout.muscle) formData.set("muscle", workout.muscle);
-        formData.set("tempId", workout.id);
-        if (workout.weight !== undefined) formData.set("weight", String(workout.weight));
-        if (workout.reps !== undefined) formData.set("reps", String(workout.reps));
-        if (workout.distance !== undefined) formData.set("distance", String(workout.distance));
-        if (workout.time !== undefined) formData.set("time", workout.time);
-        if (workout.steps !== undefined) formData.set("steps", String(workout.steps));
-        if (workout.loggingType) formData.set("loggingType", workout.loggingType);
+        formData.set("exercise", taggedWorkout.exercise);
+        formData.set("category", taggedWorkout.category);
+        if (taggedWorkout.muscle) formData.set("muscle", taggedWorkout.muscle);
+        formData.set("tempId", taggedWorkout.id);
+        if (taggedWorkout.weight !== undefined) formData.set("weight", String(taggedWorkout.weight));
+        if (taggedWorkout.reps !== undefined) formData.set("reps", String(taggedWorkout.reps));
+        if (taggedWorkout.distance !== undefined) formData.set("distance", String(taggedWorkout.distance));
+        if (taggedWorkout.time !== undefined) formData.set("time", taggedWorkout.time);
+        if (taggedWorkout.steps !== undefined) formData.set("steps", String(taggedWorkout.steps));
+        if (taggedWorkout.loggingType) formData.set("loggingType", taggedWorkout.loggingType);
+        if (taggedWorkout.routineId) formData.set("routineId", taggedWorkout.routineId);
+        if (taggedWorkout.routineName) formData.set("routineName", taggedWorkout.routineName);
         fetcher.submit(formData, {method: "post"});
     }
 
@@ -649,6 +665,7 @@ export default function Log(){
                             selectedDate={date}
                             today={clientToday}
                             dayLinkBase="?"
+                            routineNamesByDate={routineNamesByDate}
                         />
                     </div>
                 )}

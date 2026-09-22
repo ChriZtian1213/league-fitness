@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";import {
+import { useEffect, useState } from "react";
+import {
     DndContext,
     closestCenter,
     PointerSensor,
@@ -22,7 +23,7 @@ import {CreateExerciseForm} from "~/components/CreateExerciseForm";
 type CatalogEntry = {
     exercise: string;
     category: Category | null;
-    muscle: Muscle | null;
+    muscle?: Muscle;
 };
 
 type Props = {
@@ -85,10 +86,7 @@ function SortableRoutineRow({
                 <p className="text-xs text-neutral-400">{routine.exerciseNames.length} exercises</p>
             </button>
             <button
-                onClick={() => {
-                    console.log("ROW EDIT BUTTON", routine.name);
-                    onStartEditing(routine);
-                }}
+                onClick={() => onStartEditing(routine)}
                 className="text-blue-400 text-xs px-2"
             >
                 Edit
@@ -114,12 +112,7 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
     const [query, setQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<"all" | Category>("all");
     const [localRoutines, setLocalRoutines] = useState(routines);
-    const [muscleFilter, setMuscleFilter] = useState<"all" | Muscle>("all");
     const [selectedMuscles, setSelectedMuscles] = useState<Set<Muscle>>(new Set());
-
-    const UPPER_MUSCLES: Muscle[] = ["chest", "back", "shoulders", "biceps", "triceps"];
-    const LOWER_MUSCLES: Muscle[] = ["quads", "hamstrings", "glutes", "calves"];
-    const CORE_MUSCLES: Muscle[] = ["abs"];
 
     function toggleMuscle(muscle: Muscle) {
         setSelectedMuscles((prev) => {
@@ -139,17 +132,6 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
         )
     ).sort();
 
-    function musclesForCategory(category: "all" | Category): Muscle[] {
-        if (category === "upper") return [...UPPER_MUSCLES, ...CORE_MUSCLES];
-        if (category === "lower") return [...LOWER_MUSCLES, ...CORE_MUSCLES];
-        if (category === "cardio") return [];
-        return [...UPPER_MUSCLES, ...LOWER_MUSCLES, ...CORE_MUSCLES]; // "all"
-    }
-
-    function muscleLabel(m: Muscle) {
-        return m.charAt(0).toUpperCase() + m.slice(1);
-    }
-
     function startCreating() {
         setIsCreating(true);
         setEditingRoutine(null);
@@ -167,13 +149,10 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
     }
 
     function startEditing(routine: RoutineEntry) {
-        console.log("START EDITING", routine.name);
-
         setEditingRoutine(routine);
         setName(routine.name);
         setSelectedExercises(routine.exerciseNames);
         setQuery("");
-
         onStartEditing(routine);
     }
 
@@ -229,8 +208,6 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
         }
     }
 
-
-
     const filteredExercises = exerciseCatalog
         .filter((c) => categoryFilter === "all" || c.category === categoryFilter)
         .filter((c) => selectedMuscles.size === 0 || (c.muscle && selectedMuscles.has(c.muscle)))
@@ -248,7 +225,6 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
         ? exerciseCatalog.find((c) => c.exercise.toLowerCase().includes(query.toLowerCase()))
         : null;
 
-
     if (isCreatingExercise) {
         return (
             <div className="flex flex-col items-center gap-2 w-full max-w-md px-4">
@@ -256,11 +232,9 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
                     initialName={query}
                     onCreate={(name, category, muscle, loggingTypes) => {
                         onCreateExercise(name, category, muscle, loggingTypes);
-
                         setSelectedExercises((previous) =>
                             previous.includes(name) ? previous : [...previous, name]
                         );
-
                         setQuery("");
                         setIsCreatingExercise(false);
                     }}
@@ -370,7 +344,7 @@ export function RoutinesStep({routines, exerciseCatalog, onReorderRoutines,
                                     type="button"
                                     onClick={() => {
                                         setCategoryFilter("all");
-                                        setMuscleFilter("all");
+                                        setSelectedMuscles(new Set());
                                     }}
                                     className="text-blue-400 underline"
                                 >

@@ -16,4 +16,7 @@ export type WorkoutEntry = {
     time?: string
     steps?: number
     floors?: number
+
+    routineId?: string
+    routineName?: string
 }
