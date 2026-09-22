@@ -96,9 +96,13 @@ export function WorkoutCalendar({year, month, loggedDates, selectedDate, today, 
                             <div className="flex flex-col items-center justify-center w-full h-full">
                                 <span className="text-xs">{day}</span>
                                 {routineNamesByDate?.[dateStr] && (
-                                    <span className="text-[9px] leading-none truncate max-w-full px-0.5">
-                {routineNamesByDate[dateStr].join(", ")}
-            </span>
+                                    <div className="flex flex-col items-center w-full">
+                                        {routineNamesByDate[dateStr].map((name) => (
+                                            <span key={name} className="text-[9px] leading-none truncate max-w-full px-0.5">
+                            {name}
+                        </span>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </Link>
