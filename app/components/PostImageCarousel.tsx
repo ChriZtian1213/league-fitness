@@ -4,6 +4,14 @@ export function PostImageCarousel({imageUrls, caption}: {imageUrls: string[]; ca
     const [activeIndex, setActiveIndex] = useState(0);
     const touchStartX = useRef<number | null>(null);
 
+    if (!imageUrls || imageUrls.length === 0) {
+        return (
+            <div className="w-full max-w-md aspect-square border-2 border-black bg-neutral-800 flex items-center justify-center text-neutral-500 text-sm">
+                Image unavailable
+            </div>
+        );
+    }
+
     function goTo(index: number) {
         setActiveIndex((index + imageUrls.length) % imageUrls.length);
     }
