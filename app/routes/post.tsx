@@ -8,6 +8,7 @@ import {getUserById} from "~/server/user.server";
 import {CommentThread} from "~/components/CommentThread";
 import {timeAgo} from "~/utils/timeAgo";
 import {useNavigate} from "react-router";
+import {PostImageCarousel} from "~/components/PostImageCarousel";
 
 export async function loader({request, params}: Route.LoaderArgs) {
     const userId = await requireUserId(request);
@@ -164,11 +165,7 @@ export default function PostDetail() {
                     )}
                 </div>
 
-                <img
-                    className="w-full max-w-md border-2 border-black object-contain"
-                    src={post.imageData}
-                    alt={post.caption ?? "Workout post"}
-                />
+                <PostImageCarousel imageUrls={post.imageUrls} caption={post.caption} />
 
                 <div className="flex flex-row gap-3">
                     <Form method="post">

@@ -7,6 +7,7 @@ import {NavBar} from "~/components/NavBar";
 import {CooldownTimer} from "~/components/CooldownTimer";
 import {ImageCropModal, type ShapeOption} from "~/components/ImageCropModal";
 import {getUserById, getResendCooldownSeconds} from "~/server/user.server";
+import { uploadImage } from "~/server/blob.server";
 
 const SHAPE_OPTIONS: ShapeOption[] = [
     {key: "square", aspect: 1, cropShape: "rect", label: "Square"},
@@ -35,15 +36,23 @@ export async function action({request}: Route.ActionArgs) {
     }
 
     const formData = await request.formData();
-    const imageData = formData.get("imageData");
+    const images = formData.getAll("images");
     const caption = formData.get("caption");
 
-    if (typeof imageData !== "string" || !imageData.startsWith("data:image")) {
-        return {error: "Please choose and crop an image."};
+    const validImages = images.filter(
+        (img): img is string => typeof img === "string" && img.startsWith("data:image")
+    );
+
+    if (validImages.length === 0) {
+        return {error: "Please choose and crop at least one image."};
     }
 
+    const imageUrls = await Promise.all(
+        validImages.map((dataUrl, i) => uploadImage(dataUrl, `posts/${userId}-${Date.now()}-${i}`))
+    );
+
     await createPost(userId, {
-        imageData,
+        imageUrls,
         caption: typeof caption === "string" && caption.trim() ? caption.trim() : undefined,
     });
 
@@ -56,22 +65,34 @@ export default function CreatePost() {
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
 
+    const MAX_PHOTOS = 5;
+
     const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
-    const [croppedImage, setCroppedImage] = useState<string | null>(null);
-    const [croppedShapeKey, setCroppedShapeKey] = useState<string>("square");
+    const [croppedImages, setCroppedImages] = useState<{dataUrl: string; shapeKey: string}[]>([]);
+    const [activeIndex, setActiveIndex] = useState(0);
 
     function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
+        if (croppedImages.length >= MAX_PHOTOS) {
+            alert(`You can add up to ${MAX_PHOTOS} photos per post.`);
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = () => setRawImageSrc(reader.result as string);
         reader.readAsDataURL(file);
     }
 
+    function removePhoto(index: number) {
+        setCroppedImages((prev) => prev.filter((_, i) => i !== index));
+        setActiveIndex((prev) => Math.max(0, Math.min(prev, croppedImages.length - 2)));
+    }
+
+    const activePhoto = croppedImages[activeIndex];
     const previewAspectClass =
-        croppedShapeKey === "landscape" ? "aspect-[4/3]" :
-            croppedShapeKey === "portrait" ? "aspect-[3/4]" :
+        activePhoto?.shapeKey === "landscape" ? "aspect-[4/3]" :
+            activePhoto?.shapeKey === "portrait" ? "aspect-[3/4]" :
                 "aspect-square";
 
     return (
@@ -93,28 +114,75 @@ export default function CreatePost() {
                 className="flex flex-col gap-4 w-full max-w-md px-4"
                 onSubmit={() => setRawImageSrc(null)}
             >
-                <input type="hidden" name="imageData" value={croppedImage ?? ""} />
+                {croppedImages.map((img, i) => (
+                    <input key={i} type="hidden" name="images" value={img.dataUrl} />
+                ))}
 
                 <div className="flex flex-col gap-2">
-                    {croppedImage && (
-                        <img
-                            src={croppedImage}
-                            alt="Post preview"
-                            className={`w-full max-w-xs mx-auto border-2 border-black object-cover ${previewAspectClass}`}
-                        />
+                    {croppedImages.length > 0 && (
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="relative w-full max-w-xs mx-auto">
+                                <img
+                                    src={activePhoto.dataUrl}
+                                    alt={`Post preview ${activeIndex + 1}`}
+                                    className={`w-full border-2 border-black object-cover ${previewAspectClass}`}
+                                />
+                                {croppedImages.length > 1 && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveIndex((i) => (i - 1 + croppedImages.length) % croppedImages.length)}
+                                            className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                                        >
+                                            ‹
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveIndex((i) => (i + 1) % croppedImages.length)}
+                                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                                        >
+                                            ›
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => removePhoto(activeIndex)}
+                                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                                >
+                                    X
+                                </button>
+                            </div>
+
+                            {croppedImages.length > 1 && (
+                                <div className="flex gap-1">
+                                    {croppedImages.map((_, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => setActiveIndex(i)}
+                                            className={`w-2 h-2 rounded-full ${i === activeIndex ? "bg-neutral-200" : "bg-neutral-600"}`}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-xs text-neutral-400">{croppedImages.length} / {MAX_PHOTOS} photos</p>
+                        </div>
                     )}
 
-                    <label className="text-sm">
-                        <span className="inline-block cursor-pointer border border-neutral-500 rounded-md bg-neutral-700 text-neutral-200 font-bold px-4 py-2 hover:bg-neutral-600">
-                            {croppedImage ? "Choose a different photo" : "Choose photo"}
-                        </span>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />
-                    </label>
+                    {croppedImages.length < MAX_PHOTOS && (
+                        <label className="text-sm">
+                            <span className="inline-block cursor-pointer border border-neutral-500 rounded-md bg-neutral-700 text-neutral-200 font-bold px-4 py-2 hover:bg-neutral-600">
+                                {croppedImages.length === 0 ? "Choose photo" : "Add another photo"}
+                            </span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                        </label>
+                    )}
                 </div>
 
                 <textarea
@@ -126,7 +194,7 @@ export default function CreatePost() {
                 <button
                     type="submit"
                     className="border rounded-md px-4 py-2 font-bold bg-green-700 disabled:opacity-50"
-                    disabled={isSubmitting || !croppedImage}
+                    disabled={isSubmitting || croppedImages.length === 0}
                 >
                     {isSubmitting ? "Sharing..." : "Share"}
                 </button>
@@ -139,11 +207,10 @@ export default function CreatePost() {
                 <ImageCropModal
                     imageSrc={rawImageSrc}
                     shapeOptions={SHAPE_OPTIONS}
-                    initialShapeKey={croppedShapeKey}
                     onCancel={() => setRawImageSrc(null)}
                     onCropDone={(dataUrl, shapeKey) => {
-                        setCroppedImage(dataUrl);
-                        setCroppedShapeKey(shapeKey);
+                        setCroppedImages((prev) => [...prev, {dataUrl, shapeKey}]);
+                        setActiveIndex(croppedImages.length);
                         setRawImageSrc(null);
                     }}
                 />

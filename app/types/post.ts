@@ -1,29 +1,3 @@
-export interface Comment {
-    id: string;
-    userId: string;
-    displayName: string;
-    text: string;
-    createdAt: Date;
-    likeCount: number;
-    likedByMe: boolean;
-    parentCommentId: string | null;
-    edited: boolean;
-    editedAt: Date | null;
-}
+import type { getFeed } from "~/server/post.server";
 
-export interface PostEntry {
-    id: string;
-    userId: string;
-    displayName: string;
-    profilePicture: string | null;
-    imageData: string;
-    caption?: string;
-    createdAt: Date;
-    likeCount: number;
-    likedByMe: boolean;
-    commentCount: number;
-    comments: Comment[];
-    repostCount: number;
-    isFollowing: boolean;
-    isOwnPost: boolean;
-}
+export type PostEntry = Awaited<ReturnType<typeof getFeed>>[number];

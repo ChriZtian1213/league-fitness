@@ -5,6 +5,8 @@ import crypto from "crypto";
 import { createNotification } from "~/server/notification.server";
 import { uploadImage, deleteImage } from "~/server/blob.server";
 
+const LEAGUE_FITNESS_ACCOUNT_ID = "6ab1e4593b84e7da5baa7e9c";
+
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60s
 
 export interface PublicUser {
@@ -173,11 +175,26 @@ export async function createUser(data: CreateUserInput) {
         createdAt: new Date(),
     });
 
+    const newUserId = result.insertedId.toString();
+
+    if (LEAGUE_FITNESS_ACCOUNT_ID) {
+        try {
+            await db.collection("users").updateOne(
+                { _id: new ObjectId(LEAGUE_FITNESS_ACCOUNT_ID) },
+                { $addToSet: { followerIds: new ObjectId(newUserId) } }
+            );
+        } catch {
+            // Don't let a missing/misconfigured official account block signup.
+        }
+    }
+
     return {
-        userId: result.insertedId.toString(),
+        userId: newUserId,
         verificationToken
     };
 }
+
+
 
 export interface LoginInput {
     identifier: string; // email or username

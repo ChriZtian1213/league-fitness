@@ -3,6 +3,7 @@ import {Form, Link} from "react-router";
 import {CommentThread} from "~/components/CommentThread";
 import type {getFeed} from "~/server/post.server";
 import {timeAgo} from "~/utils/timeAgo";
+import {PostImageCarousel} from "~/components/PostImageCarousel";
 
 type FeedPost = Awaited<ReturnType<typeof getFeed>>[number];
 
@@ -87,11 +88,7 @@ export function PostCard({post, currentUserId}: {post: FeedPost; currentUserId: 
                 )}
             </div>
 
-            <img
-                className="w-full max-w-md border-2 border-black object-contain"
-                src={post.imageData}
-                alt={post.caption ?? "Workout post"}
-            />
+            <PostImageCarousel imageUrls={post.imageUrls} caption={post.caption} />
 
             <div className="flex flex-row gap-3">
                 <Form method="post">

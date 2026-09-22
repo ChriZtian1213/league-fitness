@@ -394,12 +394,17 @@ export default function Profile() {
                         <p className="col-span-3 text-center py-8">No posts yet.</p>
                     )}
                     {posts.map((post) => (
-                        <Link key={post.id} to={`/post/${post.id}`}>
+                        <Link key={post.id} to={`/post/${post.id}`} className="relative">
                             <img
-                                src={post.imageData}
+                                src={post.imageUrls[0]}
                                 className="w-full aspect-square object-cover"
                                 alt={post.caption ?? "Post"}
                             />
+                            {post.imageUrls.length > 1 && (
+                                <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1 rounded">
+                        {post.imageUrls.length}
+                    </span>
+                            )}
                         </Link>
                     ))}
                 </div>
@@ -411,12 +416,17 @@ export default function Profile() {
                         <p className="col-span-3 text-center py-8">No reposts yet.</p>
                     )}
                     {reposts.map((post) => (
-                        <Link key={post.id} to={`/post/${post.id}`}>
+                        <Link key={post.id} to={`/post/${post.id}`} className="relative">
                             <img
-                                src={post.imageData}
+                                src={post.imageUrls[0]}
                                 className="w-full aspect-square object-cover"
                                 alt={post.caption ?? "Repost"}
                             />
+                            {post.imageUrls.length > 1 && (
+                                <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-1 rounded">
+                        {post.imageUrls.length}
+                    </span>
+                            )}
                         </Link>
                     ))}
                 </div>

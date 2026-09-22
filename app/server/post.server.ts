@@ -3,7 +3,7 @@ import { createNotification } from "~/server/notification.server";
 export type FeedScope = "following" | "global";
 import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
-import { uploadImage, deleteImage } from "~/server/blob.server";
+import { deleteImage } from "~/server/blob.server";
 
 interface CommentDoc {
     id: string;
@@ -20,7 +20,7 @@ interface CommentDoc {
 interface PostDoc {
     _id: ObjectId;
     userId: ObjectId;
-    imageData: string;
+    imageUrls: string[];
     caption?: string;
     createdAt: Date;
     likedBy: ObjectId[];
@@ -29,18 +29,16 @@ interface PostDoc {
 }
 
 export interface CreatePostInput {
-    imageData: string;
+    imageUrls: string[];
     caption?: string;
 }
 
 export async function createPost(userId: string, data: CreatePostInput) {
     const db = await connectDB();
 
-    const imageUrl = await uploadImage(data.imageData, `posts/${userId}-${Date.now()}`);
-
     const result = await db.collection<PostDoc>("posts").insertOne({
         userId: new ObjectId(userId),
-        imageData: imageUrl,
+        imageUrls: data.imageUrls,
         caption: data.caption,
         createdAt: new Date(),
         likedBy: [],
@@ -93,7 +91,7 @@ export async function getFeed(viewerUserId: string, scope: FeedScope = "followin
             userId: post.userId.toString(),
             displayName: author?.displayName ?? "Unknown",
             profilePicture: author?.profilePicture ?? null,
-            imageData: post.imageData,
+            imageUrls: post.imageUrls,
             caption: post.caption,
             createdAt: post.createdAt,
             likeCount: (post.likedBy ?? []).length,
@@ -331,14 +329,14 @@ export async function deletePost(userId: string, postId: string) {
         throw new Error("Post not found or not authorized");
     }
 
-    if (post?.imageData) {
-        await deleteImage(post.imageData);
+    if (post?.imageUrls?.length) {
+        await Promise.all(post.imageUrls.map((url) => deleteImage(url)));
     }
 }
 
 export interface UserPostSummary {
     id: string;
-    imageData: string;
+    imageUrls: string[];
     caption?: string;
     createdAt: Date;
 }
@@ -353,7 +351,7 @@ export async function getPostsByUser(userId: string): Promise<UserPostSummary[]>
 
     return posts.map((p) => ({
         id: p._id.toString(),
-        imageData: p.imageData,
+        imageUrls: p.imageUrls,
         caption: p.caption,
         createdAt: p.createdAt,
     }));
@@ -374,7 +372,7 @@ export async function getRepostedPostsByUser(userId: string): Promise<UserPostSu
 
     return posts.map((p) => ({
         id: p._id.toString(),
-        imageData: p.imageData,
+        imageUrls: p.imageUrls,
         caption: p.caption,
         createdAt: p.createdAt,
     }));
@@ -386,29 +384,20 @@ export async function getPostById(viewerUserId: string, postId: string) {
 
     if (!ObjectId.isValid(postId)) return null;
 
-    const posts = await db
-        .collection<PostDoc>("posts")
-        .aggregate([
-            { $match: { _id: new ObjectId(postId) } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "userId",
-                    foreignField: "_id",
-                    as: "author",
-                },
-            },
-            { $unwind: "$author" },
-        ])
-        .toArray();
-
-    const post = posts[0];
+    const post = await db.collection<PostDoc>("posts").findOne({ _id: new ObjectId(postId) });
     if (!post) return null;
+
+    const author = await db.collection("users").findOne(
+        { _id: post.userId },
+        { projection: { displayName: 1, profilePicture: 1, followerIds: 1 } }
+    );
+
     return {
         id: post._id.toString(),
         userId: post.userId.toString(),
-        displayName: post.author.displayName,
-        imageData: post.imageData,
+        displayName: author?.displayName ?? "Unknown",
+        profilePicture: author?.profilePicture ?? null,
+        imageUrls: post.imageUrls,
         caption: post.caption,
         createdAt: post.createdAt,
         likeCount: (post.likedBy ?? []).length,
@@ -427,9 +416,10 @@ export async function getPostById(viewerUserId: string, postId: string) {
             editedAt: c.editedAt ?? null,
         })),
         repostCount: (post.repostedBy ?? []).length,
-        isFollowing: (post.author.followerIds ?? []).some((id: ObjectId) =>
+        isFollowing: (author?.followerIds ?? []).some((id: ObjectId) =>
             id.equals(viewerObjectId)
         ),
         isOwnPost: post.userId.equals(viewerObjectId),
+        isRepostedByMe: (post.repostedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
     };
 }

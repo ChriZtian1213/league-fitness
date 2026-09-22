@@ -4,14 +4,21 @@ const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
 const db = client.db("LeagueFitness");
 
-const routines = await db.collection("routines").find({}).sort({ createdAt: 1 }).toArray();
+const account = await db.collection("users").findOne({ username: "leaguefitness" });
 
-for (let i = 0; i < routines.length; i++) {
-    await db.collection("routines").updateOne(
-        { _id: routines[i]._id },
-        { $set: { order: i } }
+if (!account) {
+    console.log("League Fitness account not found — check the username filter.");
+} else {
+    const allOtherUsers = await db.collection("users").find({ _id: { $ne: account._id } }).toArray();
+    const allOtherUserIds = allOtherUsers.map((u) => u._id);
+
+    const result = await db.collection("users").updateOne(
+        { _id: account._id },
+        { $addToSet: { followerIds: { $each: allOtherUserIds } } }
     );
+
+    console.log(`Added ${allOtherUserIds.length} existing user(s) as followers of League Fitness.`);
+    console.log("Modified:", result.modifiedCount);
 }
-console.log("Assigned order to", routines.length, "routine(s)");
 
 await client.close();
