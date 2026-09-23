@@ -254,8 +254,13 @@ export async function getLiftingExerciseOverview(
 ): Promise<ExerciseOverviewEntry[]> {
     const db = await connectDB();
 
+    const verifiedUsers = await db.collection("users").find({ emailVerified: true, leaderboardOptOut: { $ne: true } }).project({ displayName: 1 }).toArray();
+    const verifiedIds = verifiedUsers.map((u: any) => u._id);
+    const verifiedMap = new Map(verifiedUsers.map((u: any) => [u._id.toString(), u.displayName]));
+
     const baseMatch: Record<string, any> = {
         reps: { $exists: true, $ne: null },
+        userId: { $in: verifiedIds },
     };
 
     if (period !== "all") {
@@ -266,11 +271,17 @@ export async function getLiftingExerciseOverview(
     }
     if (scope === "following") {
         const followedIds = await getFollowedObjectIds(userId);
-        baseMatch.userId = { $in: [...followedIds, new ObjectId(userId)] };
+        const followedSet = new Set(followedIds.map((id) => id.toString()));
+        baseMatch.userId.$in = baseMatch.userId.$in.filter((id: ObjectId) =>
+            followedSet.has(id.toString()) || id.toString() === userId
+        );
     }
     if (scope === "mutual") {
         const mutualIds = await getMutualFollowObjectIds(userId);
-        baseMatch.userId = { $in: [...mutualIds, new ObjectId(userId)] };
+        const mutualSet = new Set(mutualIds.map((id) => id.toString()));
+        baseMatch.userId.$in = baseMatch.userId.$in.filter((id: ObjectId) =>
+            mutualSet.has(id.toString()) || id.toString() === userId
+        );
     }
     if (category) baseMatch.category = category;
     if (muscle) baseMatch.muscle = muscle;
@@ -307,33 +318,18 @@ export async function getLiftingExerciseOverview(
 
     const combined = [...weighted, ...bodyweight] as any[];
 
-    // Fetch the (small number of) distinct users involved, separately —
-    // avoids the $lookup stage entirely, which was the confirmed bottleneck.
-    const userIds = [...new Set(combined.map((r) => r.userId.toString()))].map((id) => new ObjectId(id));
-    const rawUsers = userIds.length
-        ? await db.collection("users").find({ _id: { $in: userIds }, leaderboardOptOut: { $ne: true } }).project({ displayName: 1, emailVerified: 1 }).toArray()
-        : [];
-    const users = rawUsers as { _id: ObjectId; displayName: string; emailVerified?: boolean }[];
-    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
-
     return combined
-        .map((r) => {
-            const user = userMap.get(r.userId.toString());
-            return {
-                exercise: r._id,
-                category: r.category ?? null,
-                muscle: r.muscle ?? null,
-                value: r.value,
-                displayName: user?.displayName ?? "Unknown",
-                userId: r.userId.toString(),
-                loggingType: r.loggingType,
-                emailVerified: user?.emailVerified ?? false,
-            };
-        })
-        .filter((r) => r.emailVerified)
+        .map((r) => ({
+            exercise: r._id,
+            category: r.category ?? null,
+            muscle: r.muscle ?? null,
+            value: r.value,
+            displayName: verifiedMap.get(r.userId.toString()) ?? "Unknown",
+            userId: r.userId.toString(),
+            loggingType: r.loggingType,
+        }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 100)
-        .map(({emailVerified, ...rest}) => rest);
+        .slice(0, 100);
 }
 
 let catalogCache: { data: ExerciseCatalogEntry[]; expiresAt: number } | null = null;
