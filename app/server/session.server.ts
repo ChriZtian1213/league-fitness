@@ -85,3 +85,9 @@ export async function logout(request: Request) {
         },
     });
 }
+
+export async function getOptionalUserId(request: Request): Promise<string | null> {
+    const session = await getSession(request.headers.get("Cookie"));
+    const userId = session.get("userId");
+    return typeof userId === "string" ? userId : null;
+}

@@ -6,14 +6,12 @@ import { SignupForm } from "~/components/SignupForm";
 import {createUser, verifyLogin} from "~/server/user.server";
 import {createUserSession, getUserId} from "~/server/session.server";
 import {sendVerificationEmail} from "~/server/email.server";
-import {redirect} from "react-router";
-
-// TODO: Add guest mode and limit functions.
+import {redirect, Link} from "react-router";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "League Fitness" },
+    { name: "...", content: "Welcome to League Fitness!" },
   ];
 }
 
@@ -100,6 +98,15 @@ export default function Welcome() {
             </div>
             <div className="text-sm pb-2 border-b flex items-center justify-center">
                 Track your workouts and compete with friends!
+            </div>
+
+            <div className="flex justify-center pt-3">
+                <Link
+                    to="/log"
+                    className="flex items-center gap-1 px-4 py-2 rounded-full border border-blue-500 bg-blue-500/20 text-blue-400 text-sm font-bold hover:border-blue-400 transition-colors"
+                >
+                    Try it as a guest →
+                </Link>
             </div>
 
             <div className="flex flex-col items-center pt-5 ">

@@ -4,6 +4,7 @@ import {useNavigate} from "react-router";
 import {useWorkoutFlow} from "~/features/workoutFlow/useWorkoutFlow";
 import type {WorkoutEntry} from "~/types/workoutEntry";
 import type {Exercise, LoggingType} from "~/types/exercise";
+import {formatLine, pickBest, pickBestForExercise} from "~/utils/formatWorkout";
 import {CategoryStep} from "~/components/CategoryStep";
 import {MuscleStep} from "~/components/MuscleStep";
 import {ExerciseStep} from "~/components/ExerciseStep";
@@ -20,14 +21,16 @@ import {
     getAllExerciseNames,
     getWorkoutRoutineNamesByDate
 } from "~/server/workout.server";
-import {requireUserId} from "~/server/session.server";
 import {getUserById} from "~/server/user.server"
 import {useLocalToday} from "~/hooks/useLocalToday";
 import {
     createRoutine, deleteRoutine, getRoutinesForUser, updateRoutine, reorderRoutines
-} from "~/server/routine.server";import {RoutinesStep} from "~/components/RoutinesStep";
+} from "~/server/routine.server";
+import {RoutinesStep} from "~/components/RoutinesStep";
 import {RoutineHub} from "~/components/RoutineHub";
 import {createExercise} from "~/server/exercise.server";
+import {getOptionalUserId} from "~/server/session.server";
+import {GuestLog} from "~/components/GuestLog";
 
 function toDateStr(date: Date) {
     const d = new Date(date);
@@ -38,23 +41,14 @@ function toDateStr(date: Date) {
 }
 
 export async function loader({request}: Route.LoaderArgs){
-    const userId = await requireUserId(request);
+    const userId = await getOptionalUserId(request);
+
     const cookieHeader = request.headers.get("Cookie") ?? "";
     const timezoneMatch = cookieHeader.match(/(?:^|;\s*)timezone=([^;]*)/);
-    const timezone = timezoneMatch
-        ? decodeURIComponent(timezoneMatch[1])
-        : "UTC";
+    const timezone = timezoneMatch ? decodeURIComponent(timezoneMatch[1]) : "UTC";
 
-    const routineNamesByDate = await getWorkoutRoutineNamesByDate(userId, timezone);
-
-    const user = await getUserById(userId);
-    const workouts = await getWorkoutsForUser(userId);
     const exerciseCatalog = await getExerciseCatalog();
-    const loggedDates = await getWorkoutDatesForUser(userId, timezone);
-    const routines = await getRoutinesForUser(userId);
-    const allExerciseNames = await getAllExerciseNames();
 
-    const url = new URL(request.url);
     const now = new Date();
     const todayDateStr = new Intl.DateTimeFormat("en-CA", {
         timeZone: timezone,
@@ -62,11 +56,29 @@ export async function loader({request}: Route.LoaderArgs){
         month: "2-digit",
         day: "2-digit",
     }).format(now);
+
+    if (!userId) {
+        return {
+            isGuest: true as const,
+            exerciseCatalog,
+            todayDateStr,
+        };
+    }
+
+    const routineNamesByDate = await getWorkoutRoutineNamesByDate(userId, timezone);
+    const user = await getUserById(userId);
+    const workouts = await getWorkoutsForUser(userId);
+    const loggedDates = await getWorkoutDatesForUser(userId, timezone);
+    const routines = await getRoutinesForUser(userId);
+    const allExerciseNames = await getAllExerciseNames();
+
+    const url = new URL(request.url);
     const year = Number(url.searchParams.get("year")) || now.getFullYear();
     const month = Number(url.searchParams.get("month")) || now.getMonth() + 1;
     const date = url.searchParams.get("date") ?? todayDateStr;
 
     return {
+        isGuest: false as const,
         user,
         workouts,
         exerciseCatalog,
@@ -82,7 +94,10 @@ export async function loader({request}: Route.LoaderArgs){
 }
 
 export async function action({request}: Route.ActionArgs){
-    const userId = await requireUserId(request);
+    const userId = await getOptionalUserId(request);
+    if (!userId) {
+        return {error: "Please sign up to save workouts"}
+    }
     const formData = await request.formData();
     const tempId = formData.get("tempId");
 
@@ -206,51 +221,13 @@ export async function action({request}: Route.ActionArgs){
     return {ok: true, workout, tempId: typeof tempId === "string" ? tempId : undefined};
 }
 
-function formatLine(w: WorkoutEntry) {
-    if (w.loggingType === "timed") {
-        return `${w.time}`;
-    }
-    if (w.exercise === "Stair Master" && w.steps != null) {
-        return `${w.steps} steps in ${w.time}`;
-    }
-    if (w.loggingType === "bodyweight") {
-        return w.weight ? `${w.weight} lbs × ${w.reps} reps` : `${w.reps} reps`;
-    }
-    if (w.steps != null) {
-        return `${w.steps} steps`;
-    }
-    return w.weight && w.reps
-        ? `${w.weight} lbs × ${w.reps}`
-        : `${w.distance} mi in ${w.time}`;
-}
-
-function pickBestForExercise(workouts: WorkoutEntry[], exerciseName: string): WorkoutEntry | null {
-    const matching = workouts.filter((w) => w.exercise === exerciseName);
-    if (matching.length === 0) return null;
-    return pickBest(matching);
-}
-
-function pickBest(entries: WorkoutEntry[]): WorkoutEntry {
-    return entries.reduce((best, curr) => {
-        if (best.loggingType === "bodyweight" && curr.loggingType === "bodyweight") {
-            return (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best;
-        }
-        if (best.weight != null && curr.weight != null) {
-            if (curr.weight !== best.weight) return curr.weight > best.weight ? curr : best;
-            return (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best;
-        }
-        if (best.steps != null && curr.steps != null) {
-            return curr.steps > best.steps ? curr : best;
-        }
-        if (best.distance != null && curr.distance != null) {
-            return curr.distance > best.distance ? curr : best;
-        }
-        return best;
-    });
-}
 
 export default function Log(){
-    const {todayDateStr: serverTodayDateStr, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames, routineNamesByDate} = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof loader>();
+    if (loaderData.isGuest){
+        return <GuestLog exerciseCatalog={loaderData.exerciseCatalog} todayDateStr={loaderData.todayDateStr} />
+    }
+    const {todayDateStr: serverTodayDateStr, workouts: initialWorkouts, exerciseCatalog, loggedDates, year, month, date, todayDateStr, routines, allExerciseNames, routineNamesByDate} = loaderData;
     const clientToday = useLocalToday(todayDateStr);
     const navigate = useNavigate();
     const fetcher = useFetcher();
