@@ -4,18 +4,27 @@ import {requireUserId} from "~/server/session.server";
 import {NavBar} from "~/components/NavBar";
 import {getUserById, followUser, unfollowUser, getResendCooldownSeconds} from "~/server/user.server";
 import {
-    getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment, editComment, deletePost, editPost,
+    getFeed, toggleLike, addComment, toggleRepost, toggleCommentLike, deleteComment,
+    editComment, deletePost, editPost, getPublicAnnouncementPosts,
     type FeedScope
 } from "~/server/post.server";
 import {PostCard} from "~/components/PostCard";
 import {CooldownTimer} from "~/components/CooldownTimer";
 import {getUnreadNotificationCount} from "~/server/notification.server";
 import {getUnreadMessageCount} from "~/server/message.server";
+import {getOptionalUserId} from "~/server/session.server";
+import {GuestHome} from "~/components/GuestHome";
 
 export type PostEntry = Awaited<ReturnType<typeof getFeed>>[number];
 
 export async function loader({request}: Route.LoaderArgs) {
-    const userId = await requireUserId(request);
+    const userId = await getOptionalUserId(request);
+
+    if (!userId) {
+        const posts = await getPublicAnnouncementPosts();
+        return {isGuest: true as const, posts};
+    }
+
     const user = await getUserById(userId);
     const url = new URL(request.url);
     const requestedScope = url.searchParams.get("scope");
@@ -24,7 +33,7 @@ export async function loader({request}: Route.LoaderArgs) {
     const cooldownSeconds = user && !user.emailVerified ? await getResendCooldownSeconds(userId) : 0;
     const unreadCount = await getUnreadNotificationCount(userId);
     const unreadMessageCount = await getUnreadMessageCount(userId);
-    return {user, posts, scope, cooldownSeconds, unreadCount, unreadMessageCount};
+    return {isGuest: false as const, user, posts, scope, cooldownSeconds, unreadCount, unreadMessageCount};
 }
 
 export async function action({request}: Route.ActionArgs) {
@@ -161,7 +170,13 @@ export async function action({request}: Route.ActionArgs) {
 }
 
 export default function Home() {
-    const {cooldownSeconds, user, posts, scope, unreadCount, unreadMessageCount} = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof loader>();
+
+    if (loaderData.isGuest) {
+        return <GuestHome posts={loaderData.posts} />;
+    }
+
+    const {cooldownSeconds, user, posts, scope, unreadCount, unreadMessageCount} = loaderData;
 
     return (
         <div className="min-h-screen bg-gray-800 text-neutral-200 pb-24">
@@ -179,8 +194,8 @@ export default function Home() {
                     🔔
                     {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
-            {unreadCount > 9 ? "9+" : unreadCount}
-        </span>
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
                     )}
                 </Link>
 
@@ -195,8 +210,8 @@ export default function Home() {
                     ✉️
                     {unreadMessageCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5">
-            {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
-        </span>
+                            {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                        </span>
                     )}
                 </Link>
             </div>
@@ -229,7 +244,7 @@ export default function Home() {
             )}
 
             {posts.map((post: PostEntry) => (
-                <PostCard key={post.id} post={post} currentUserId={user?.id ?? ""}  />
+                <PostCard key={post.id} post={post} currentUserId={user?.id ?? ""} />
             ))}
 
             <NavBar/>

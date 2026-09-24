@@ -28,8 +28,8 @@ export function NavBar({ isGuest = false }: Props) {
     return (
         <div className="fixed bottom-0 left-0 w-full flex bg-gray-900 px-1 py-3 border-t border-black">
 
-            <NavLink to="/home" className={isGuest ? lockedClass : linkClass} onClick={isGuest ? (e) => { e.preventDefault(); alert("Sign up to unlock Home."); } : undefined}>
-                <span className="text-2xl">{isGuest ? "🔒" : "🏠"}</span>
+            <NavLink to="/home" className={linkClass}>
+                <span className="text-2xl">🏠</span>
                 <span className="text-xs leading-tight">Home</span>
             </NavLink>
 

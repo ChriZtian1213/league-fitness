@@ -5,6 +5,8 @@ import { connectDB } from "./db.server";
 import { ObjectId } from "mongodb";
 import { deleteImage } from "~/server/blob.server";
 
+const LEAGUE_FITNESS_ACCOUNT_ID = "6ab1e4593b84e7da5baa7e9c";
+
 interface CommentDoc {
     id: string;
     userId: ObjectId;
@@ -422,4 +424,30 @@ export async function getPostById(viewerUserId: string, postId: string) {
         isOwnPost: post.userId.equals(viewerObjectId),
         isRepostedByMe: (post.repostedBy ?? []).some((id: ObjectId) => id.equals(viewerObjectId)),
     };
+}
+
+export async function getPublicAnnouncementPosts() {
+    const db = await connectDB();
+
+    const posts = await db.collection<PostDoc>("posts")
+        .find({ userId: new ObjectId(LEAGUE_FITNESS_ACCOUNT_ID) })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .toArray();
+
+    const author = await db.collection("users").findOne(
+        { _id: new ObjectId(LEAGUE_FITNESS_ACCOUNT_ID) },
+        { projection: { displayName: 1, profilePicture: 1 } }
+    );
+
+    return posts.map((post) => ({
+        id: post._id.toString(),
+        displayName: author?.displayName ?? "League Fitness",
+        profilePicture: author?.profilePicture ?? null,
+        imageUrls: post.imageUrls,
+        caption: post.caption,
+        createdAt: post.createdAt,
+        likeCount: (post.likedBy ?? []).length,
+        commentCount: (post.comments ?? []).length,
+    }));
 }
