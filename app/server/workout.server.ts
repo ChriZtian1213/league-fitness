@@ -136,6 +136,7 @@ export interface CardioLeaderboardEntry {
     displayName: string;
     value: number;
     displayValue: string;
+    paceDisplay?: string;
 }
 
 function parseTimeToSeconds(time: string): number {
@@ -188,7 +189,7 @@ export async function getCardioLeaderboard(
         (verifiedUsers as any[]).map((u) => [u._id.toString(), u.displayName])
     );
 
-    const bestByUser = new Map<string, {value: number; displayValue: string}>();
+    const bestByUser = new Map<string, {value: number; displayValue: string; paceDisplay?: string}>();
 
     for (const doc of docs as any[]) {
         const key = doc.userId.toString();
@@ -196,6 +197,7 @@ export async function getCardioLeaderboard(
 
         let value: number | null = null;
         let displayValue = "";
+        let paceDisplay: string | undefined;
 
         if (metric === "steps" && doc.steps != null) {
             value = doc.steps;
@@ -212,11 +214,16 @@ export async function getCardioLeaderboard(
                     displayValue = `${stepsPerMin.toFixed(1)} steps/min`;
                 }
             } else if (doc.distance != null && doc.time) {
-                const minutes = parseTimeToSeconds(doc.time) / 60;
-                if (minutes > 0) {
-                    const mph = doc.distance / (minutes / 60);
+                const totalMinutes = parseTimeToSeconds(doc.time) / 60;
+                if (totalMinutes > 0) {
+                    const mph = doc.distance / (totalMinutes / 60);
                     value = mph;
                     displayValue = `${mph.toFixed(1)} mph`;
+
+                    const paceMinutes = totalMinutes / doc.distance;
+                    const paceMin = Math.floor(paceMinutes);
+                    const paceSec = Math.round((paceMinutes - paceMin) * 60);
+                    paceDisplay = `${paceMin}:${String(paceSec).padStart(2, "0")}/mi`;
                 }
             }
         }
@@ -225,7 +232,7 @@ export async function getCardioLeaderboard(
 
         const existing = bestByUser.get(key);
         if (!existing || value > existing.value) {
-            bestByUser.set(key, {value, displayValue});
+            bestByUser.set(key, {value, displayValue, paceDisplay});
         }
     }
 
@@ -235,6 +242,7 @@ export async function getCardioLeaderboard(
             displayName: verifiedMap.get(uid)!,
             value: data.value,
             displayValue: data.displayValue,
+            paceDisplay: data.paceDisplay,
         }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 50);

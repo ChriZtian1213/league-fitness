@@ -146,6 +146,7 @@ export default function Leaderboard() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchText, setSearchText] = useState(searchParams.get("q") ?? "");
     const isInternalUpdate = useRef(false);
+    const [showPace, setShowPace] = useState(false);
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -361,6 +362,15 @@ export default function Leaderboard() {
                         )}
                     </div>
 
+                    {cardioMetric === "speed" && !isStairMaster && (
+                        <button
+                            onClick={() => setShowPace((v) => !v)}
+                            className="text-xs text-blue-400 underline mb-2"
+                        >
+                            Show as {showPace ? "mph" : "pace (min/mi)"}
+                        </button>
+                    )}
+
                     {leaderboard.length === 0 && <p>No logs for this exercise yet.</p>}
                     {leaderboard.map((entry: any, index: number) => (
                         <Link
@@ -369,7 +379,7 @@ export default function Leaderboard() {
                             className="flex justify-between w-full max-w-md border-b border-neutral-600 py-2 hover:bg-neutral-700"
                         >
                             <span>{rankLabel(index)} {entry.displayName}</span>
-                            <span>{entry.displayValue}</span>
+                            <span>{showPace && entry.paceDisplay ? entry.paceDisplay : entry.displayValue}</span>
                         </Link>
                     ))}
                 </div>
