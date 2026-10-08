@@ -2,7 +2,6 @@ import type { Route } from "./+types/leaderboard";
 import {useEffect, useRef, useState} from "react";
 import { Link, useLoaderData, useSearchParams } from "react-router";
 import { requireUserId } from "~/server/session.server";
-import { getUserById } from "~/server/user.server";
 import {
     getLeaderboard,
     getExerciseCatalog,
@@ -29,7 +28,6 @@ function capitalize(s: string) {
 
 export async function loader({ request }: Route.LoaderArgs) {
     const userId = await requireUserId(request);
-    const user = await getUserById(userId);
     const url = new URL(request.url);
     const overviewSearch = url.searchParams.get("q") ?? "";
     const requestedPeriod = url.searchParams.get("period");
@@ -75,8 +73,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         .filter((c) => {
             if (c.category === "cardio") return false;
             if (category && c.category !== category) return false;
-            if (muscle && c.muscle !== muscle) return false;
-            return true;
+            return !(muscle && c.muscle !== muscle);
+
         })
         .map((c) => c.exercise);
     const uniqueExercises = Array.from(new Set(exercisesForFilter)).sort();
@@ -138,8 +136,7 @@ export default function Leaderboard() {
     const {
         leaderboard, liftingOverview, cardioOverview, cardioMetric,
         period, scope, mode,
-        category, muscle, exercise,
-        categories, musclesForCategory, exercises, overviewSearch
+        category, muscle, exercise, musclesForCategory, overviewSearch
     } = useLoaderData<typeof loader>();
 
     const searchInputRef = useRef<HTMLInputElement>(null);

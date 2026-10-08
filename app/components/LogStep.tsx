@@ -1,10 +1,12 @@
 import { useState, useRef } from "react"
 import type {Exercise, LoggingType} from "../types/exercise.ts";
 import type {WorkoutEntry} from "../types/workoutEntry.ts";
+import { formatLine, type LastSessionRange } from "~/utils/formatWorkout";
 
 type Props = {
     exercise: Exercise
     personalBest: WorkoutEntry | null
+    lastSession?: LastSessionRange | null
     onSubmit: (workout: WorkoutEntry) => void
     onBack: () => void
     onHome: () => void
@@ -37,7 +39,7 @@ function formatBest(best: WorkoutEntry): string {
     return `${best.distance} mi in ${best.time}`;
 }
 
-export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Props) {
+export function LogStep({exercise, onSubmit, onBack, onHome, personalBest, lastSession}: Props) {
     const STEPS_PER_FLOOR = 16;
 
     const [floors, setFloors] = useState("");
@@ -363,6 +365,19 @@ export function LogStep({exercise, onSubmit, onBack, onHome, personalBest}: Prop
             {personalBest && (
                 <p className="text-sm text-yellow-400 text-center">
                     🏆 Personal best: {formatBest(personalBest)}
+                </p>
+            )}
+
+            {lastSession && (
+                <p className="text-xs text-neutral-400 text-center">
+                    Last time ({lastSession.date.toLocaleDateString(undefined, {month: "short", day: "numeric"})}):{" "}
+                    {lastSession.setCount > 1 ? (
+                        <>
+                            started {formatLine(lastSession.first)} · heaviest {formatLine(lastSession.heaviest)}
+                        </>
+                    ) : (
+                        formatLine(lastSession.first)
+                    )}
                 </p>
             )}
 

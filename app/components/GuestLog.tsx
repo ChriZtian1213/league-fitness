@@ -10,7 +10,7 @@ import { NavBar } from "~/components/NavBar";
 import { Link } from "react-router";
 import type { Exercise } from "~/types/exercise";
 import type { WorkoutEntry } from "~/types/workoutEntry";
-import { formatLine, pickBest, pickBestForExercise } from "~/utils/formatWorkout";
+import { formatLine, pickBest, pickBestForExercise, getLastSessionRange } from "~/utils/formatWorkout";
 
 export function GuestLog({exerciseCatalog, todayDateStr}: {exerciseCatalog: any[]; todayDateStr: string}) {
     const flow = useWorkoutFlow();
@@ -128,6 +128,7 @@ export function GuestLog({exerciseCatalog, todayDateStr}: {exerciseCatalog: any[
                     <LogStep
                         exercise={selectedExercise}
                         personalBest={pickBestForExercise(workouts, selectedExercise.name)}
+                        lastSession={getLastSessionRange(workouts, selectedExercise.name, todayDateStr)}
                         onSubmit={(workout) => {
                             addGuestWorkout(workout);
                             flow.back();

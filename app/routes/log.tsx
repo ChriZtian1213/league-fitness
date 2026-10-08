@@ -4,7 +4,7 @@ import {useNavigate} from "react-router";
 import {useWorkoutFlow} from "~/features/workoutFlow/useWorkoutFlow";
 import type {WorkoutEntry} from "~/types/workoutEntry";
 import type {Exercise, LoggingType} from "~/types/exercise";
-import {formatLine, pickBest, pickBestForExercise} from "~/utils/formatWorkout";
+import {formatLine, pickBest, pickBestForExercise, getLastSessionRange} from "~/utils/formatWorkout";
 import {CategoryStep} from "~/components/CategoryStep";
 import {MuscleStep} from "~/components/MuscleStep";
 import {ExerciseStep} from "~/components/ExerciseStep";
@@ -599,6 +599,7 @@ export default function Log(){
                         <LogStep
                             exercise={selectedExercise}
                             personalBest={pickBestForExercise(workouts, selectedExercise.name)}
+                            lastSession={getLastSessionRange(workouts, selectedExercise.name, clientToday)}
                             onSubmit={addWorkout}
                             onBack={() => {
                                 if (flow.activeRoutine) {
