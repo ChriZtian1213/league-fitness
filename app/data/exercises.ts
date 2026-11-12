@@ -60,9 +60,14 @@ export const HARDCODED_EXERCISES: Exercise[] = ([
     {name: "Machine Leg Curl", category: "lower", muscle: "hamstrings", loggingType: "standard", allowedLoggingTypes: ["standard"]},
 
     // Glutes
-    {name: "Barbell Hip Thrust", category: "lower", muscle: "glutes", loggingType: "standard", allowedLoggingTypes: ["standard", "starting-weight"]},
     {name: "Cable Glute Kickback", category: "lower", muscle: "glutes", loggingType: "standard", allowedLoggingTypes: ["standard"]},
     {name: "Bodyweight Glute Bridge", category: "lower", muscle: "glutes", loggingType: "bodyweight", allowedLoggingTypes: ["bodyweight"]},
+
+    // Hips
+    {name: "Barbell Hip Thrust", category: "lower", muscle: "hips", loggingType: "standard", allowedLoggingTypes: ["standard", "starting-weight"]},
+    {name: "Hip Abduction Machine", category: "lower", muscle: "hips", loggingType: "standard", allowedLoggingTypes: ["standard"]},
+    {name: "Hip Adduction Machine", category: "lower", muscle: "hips", loggingType: "standard", allowedLoggingTypes: ["standard"]},
+
 
     // Calves
     {name: "Sitting Calve Raise", category: "lower", muscle: "calves", loggingType: "standard", allowedLoggingTypes: ["standard"]},

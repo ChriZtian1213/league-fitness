@@ -29,17 +29,18 @@ const loggingTypeLabels: Record<LoggingType, string> = {
     timed: "Timed",
 };
 
-const muscleOptions: {value: Muscle; label: string}[] = [
-    {value: "shoulders", label: "Shoulders"},
-    {value: "chest", label: "Chest"},
-    {value: "triceps", label: "Triceps"},
-    {value: "back", label: "Back"},
-    {value: "biceps", label: "Biceps"},
-    {value: "abs", label: "Abs"},
-    {value: "quads", label: "Quads"},
-    {value: "hamstrings", label: "Hamstrings"},
-    {value: "glutes", label: "Glutes"},
-    {value: "calves", label: "Calves"},
+const muscleOptions: {value: Muscle; label: string; category: Category}[] = [
+    {value: "shoulders", label: "Shoulders", category: "upper"},
+    {value: "chest", label: "Chest", category: "upper"},
+    {value: "triceps", label: "Triceps", category: "upper"},
+    {value: "back", label: "Back", category: "upper"},
+    {value: "biceps", label: "Biceps", category: "upper"},
+    {value: "abs", label: "Abs", category: "upper"},
+    {value: "quads", label: "Quads", category: "lower"},
+    {value: "hamstrings", label: "Hamstrings", category: "lower"},
+    {value: "glutes", label: "Glutes", category: "lower"},
+    {value: "hips", label: "Hips", category: "lower"},
+    {value: "calves", label: "Calves", category: "lower"},
 ];
 
 export function CreateExerciseForm({initialName = "", onCreate, onCancel}: Props) {
@@ -106,7 +107,7 @@ export function CreateExerciseForm({initialName = "", onCreate, onCancel}: Props
 
             {category !== "cardio" && (
                 <div className="flex flex-wrap justify-center gap-2">
-                    {muscleOptions.map((m) => (
+                    {muscleOptions.filter((m) => m.category === category).map((m) => (
                         <button
                             key={m.value}
                             type="button"
